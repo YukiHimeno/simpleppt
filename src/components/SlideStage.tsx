@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, ChevronRight, Maximize2, Pencil, RotateCcw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Maximize2, Pencil, RotateCcw, StickyNote } from 'lucide-react'
 import type { RunStatus, SlideStyle } from 'shared/types'
 import { sanitizeSvg } from '../lib/exporter'
 import { SlideEditor } from './SlideEditor'
@@ -32,6 +32,7 @@ export function SlideStage({
   onRegenerate,
   onExportPptx,
   onExportSvg,
+  onExportNotes,
   exporting,
 }: {
   slides: SlideItem[]
@@ -42,10 +43,13 @@ export function SlideStage({
   onRegenerate?: (pageId: string) => void
   onExportPptx?: () => void
   onExportSvg?: (index: number) => void
+  onExportNotes?: () => void
   exporting?: boolean
 }) {
   const [active, setActive] = useState(0)
   const [present, setPresent] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
   const idx = Math.min(active, slides.length - 1)
   const cur = slides[idx]
   const doneCount = slides.filter((s) => s.svg).length
@@ -53,10 +57,23 @@ export function SlideStage({
 
   useEffect(() => {
     if (!present) return
+    setElapsed(0)
+    const t = setInterval(() => setElapsed((v) => v + 1), 1000)
+    return () => clearInterval(t)
+  }, [present])
+
+  useEffect(() => {
+    if (!present) return
     const h = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setPresent(false)
-      if (e.key === 'ArrowRight') setActive((a) => Math.min(a + 1, slides.length - 1))
-      if (e.key === 'ArrowLeft') setActive((a) => Math.max(a - 1, 0))
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault()
+        setActive((a) => Math.min(a + 1, slides.length - 1))
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') setActive((a) => Math.max(a - 1, 0))
+      if (e.key === 'Home') setActive(0)
+      if (e.key === 'End') setActive(slides.length - 1)
+      if (e.key === 'n' || e.key === 'N') setNotesOpen((v) => !v)
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
@@ -97,6 +114,11 @@ export function SlideStage({
           {!editing && cur?.svg && onExportSvg && (
             <Button variant="ghost" size="sm" onClick={() => onExportSvg(idx)}>
               下载本页 SVG
+            </Button>
+          )}
+          {!editing && onExportNotes && (
+            <Button variant="ghost" size="sm" onClick={onExportNotes} title="把每页一句话信息与讲者备注导出为 Markdown 讲稿">
+              导出讲稿
             </Button>
           )}
           {!editing && onExportPptx && (
@@ -201,18 +223,23 @@ export function SlideStage({
         </div>
       </div>
 
-      {/* 演示模式 */}
+      {/* 演示模式（演示者视图：N 呼出讲者备注，右上角计时） */}
       {present &&
         cur?.svg &&
         createPortal(
-          <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black p-4" onClick={() => setPresent(false)}>
+          <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center overflow-y-auto bg-black p-4" onClick={() => setPresent(false)}>
             <div className="w-full" style={{ maxWidth: `min(100%, calc((100vh - 110px) * ${style.ratio === '4:3' ? '4 / 3' : '16 / 9'}))` }} onClick={(e) => e.stopPropagation()}>
               <SlideSvg svg={cur.svg} className="shadow-2xl ring-1 ring-white/10" />
               <div className="mt-3 flex items-center justify-between text-xs text-white/50">
                 <span>
                   {idx + 1} / {slides.length} · {cur.title}
                 </span>
-                <span>← → 切换 · Esc 退出</span>
+                <span className="flex items-center gap-3">
+                  <span className="font-mono text-white/70" title="演讲计时">
+                    {String(Math.floor(elapsed / 60)).padStart(2, '0')}:{String(elapsed % 60).padStart(2, '0')}
+                  </span>
+                  <span className="hidden sm:inline">空格 / ← → 翻页 · N 备注 · Esc 退出</span>
+                </span>
               </div>
               <div className="mt-2 flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
                 <Button
@@ -224,6 +251,15 @@ export function SlideStage({
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>
                 <Button
+                  variant={notesOpen ? 'primary' : 'secondary'}
+                  size="sm"
+                  onClick={() => setNotesOpen((v) => !v)}
+                  title="讲者备注（N）"
+                >
+                  <StickyNote className="h-3.5 w-3.5" />
+                  讲者备注
+                </Button>
+                <Button
                   variant="secondary"
                   size="sm"
                   onClick={() => setActive(Math.min(slides.length - 1, idx + 1))}
@@ -232,6 +268,11 @@ export function SlideStage({
                   <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
+              {notesOpen && (
+                <div className="mt-3 max-h-40 overflow-y-auto rounded-md bg-white/5 p-3 text-sm leading-relaxed text-white/80 ring-1 ring-white/10">
+                  {cur.note || '本页没有讲者备注。'}
+                </div>
+              )}
             </div>
           </div>,
           document.body,

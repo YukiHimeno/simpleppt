@@ -41,20 +41,24 @@ export function saveSettings(s: Settings) {
   }
 }
 
+/** 运行中的状态重置为待执行（刷新后 / 导入备份后共用） */
+export function resetTransientState(p: Project): Project {
+  const q: Project = { ...p, planStatus: {}, research: { ...(p.research ?? {}) }, slides: { ...(p.slides ?? {}) } }
+  for (const k of Object.keys(q.research)) {
+    if (q.research[k].status === 'running') q.research[k] = { ...q.research[k], status: 'pending' }
+  }
+  for (const k of Object.keys(q.slides)) {
+    if (q.slides[k].status === 'running') q.slides[k] = { ...q.slides[k], status: 'pending' }
+  }
+  return q
+}
+
 export function loadProject(): Project | null {
   try {
     const raw = localStorage.getItem(PROJECT_KEY)
     if (raw) {
       const p = JSON.parse(raw) as Project
-      // 运行中的状态在刷新后重置为待执行
-      p.planStatus = {}
-      for (const k of Object.keys(p.research ?? {})) {
-        if (p.research[k].status === 'running') p.research[k].status = 'pending'
-      }
-      for (const k of Object.keys(p.slides ?? {})) {
-        if (p.slides[k].status === 'running') p.slides[k].status = 'pending'
-      }
-      return p
+      return resetTransientState(p)
     }
   } catch {
     /* ignore */

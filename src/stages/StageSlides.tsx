@@ -6,6 +6,7 @@ import { api, pMap } from '../lib/api'
 import { useApp } from '../lib/app-context'
 import { delay, mockPlans, mockResearchMap, renderMockSlide } from '../lib/mock-data'
 import { downloadBlob, downloadText } from '../lib/exporter'
+import { buildSpeechMarkdown, speechFileName } from '../lib/notes-export'
 import { resolveSlideImages } from '../lib/question-image'
 import { exportNativePptx } from '../lib/exporter-editable'
 import { SlideStage, type SlideItem } from '../components/SlideStage'
@@ -132,6 +133,11 @@ export function StageSlides() {
     downloadText(it.svg, `${project.topic || 'SimplePPT'}-${String(idx + 1).padStart(2, '0')}.svg`)
   }
 
+  function doExportNotes() {
+    downloadText(buildSpeechMarkdown(project), speechFileName(project.topic), 'text/markdown')
+    notify(`讲稿已导出（${items.length} 页 Markdown）`, 'success')
+  }
+
   return (
     <div className="animate-fade-up space-y-6">
       <StageHeader
@@ -165,6 +171,7 @@ export function StageSlides() {
         }}
         onExportPptx={doExportPptx}
         onExportSvg={doExportSvg}
+        onExportNotes={doExportNotes}
         exporting={exporting}
       />
 
