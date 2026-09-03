@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>SimplePPT — 先问清楚，再动手做 PPT</title>
+    <meta
+      name="keywords"
+      content="AI PPT,AI PPT生成,AI生成PPT,生成PPT,自动PPT,在线PPT,PPT制作,PPT生成器,幻灯片,智能PPT,PPT助手,汇报PPT"
+    />
+    <meta name="author" content="SimplePPT" />
+    <meta name="application-name" content="SimplePPT" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <meta
+      name="description"
+      content="SimplePPT：先访谈需求、规划便利贴大纲、逐页检索真实资料，再直接生成整页 SVG 幻灯片。全程可视化预览、修改、演示，并可导出可编辑 PPTX。"
+    />
+
+    <!-- PWA / 移动端 -->
+    <meta name="theme-color" content="#C43E1C" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SimplePPT" />
+    <meta name="msapplication-TileColor" content="#C43E1C" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27s%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%270%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23ED6C47%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23C43E1C%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%277%27%20fill%3D%27url%28%23s%29%27%2F%3E%3Crect%20x%3D%275%27%20y%3D%274.5%27%20width%3D%2722%27%20height%3D%2715%27%20rx%3D%271.5%27%20fill%3D%27%23fff%27%2F%3E%3Cg%20fill%3D%27%23D24726%27%3E%3Cpath%20d%3D%27M8.5%2016V8h3.8c2.2%200%203.4%201%203.4%202.7s-1.2%202.7-3.4%202.7h-1.6V16Zm2.2-4.4h1.4c.9%200%201.4-.3%201.4-.9s-.5-.9-1.4-.9h-1.4Z%27%2F%3E%3Cpath%20d%3D%27M16%2016V8h3.8c2.2%200%203.4%201%203.4%202.7s-1.2%202.7-3.4%202.7h-1.6V16Zm2.2-4.4h1.4c.9%200%201.4-.3%201.4-.9s-.5-.9-1.4-.9h-1.4Z%27%2F%3E%3Cpath%20d%3D%27M22.5%208h4v1.8h-1V16h-2V9.8h-1Z%27%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%27rotate%28-8%2023.5%2021.5%29%27%3E%3Crect%20x%3D%2718.5%27%20y%3D%2716.5%27%20width%3D%2710%27%20height%3D%2710%27%20rx%3D%271.2%27%20fill%3D%27%23FFD75E%27%2F%3E%3Cpath%20d%3D%27M28.5%2016.5%20L28.5%2020%20L25%2016.5%20Z%27%20fill%3D%27%23E8A500%27%2F%3E%3Crect%20x%3D%2721%27%20y%3D%2720.5%27%20width%3D%274%27%20height%3D%271.2%27%20rx%3D%270.6%27%20fill%3D%27%238A5A00%27%2F%3E%3Crect%20x%3D%2721%27%20y%3D%2723%27%20width%3D%275.2%27%20height%3D%271.2%27%20rx%3D%270.6%27%20fill%3D%27%238A5A00%27%20fill-opacity%3D%270.8%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"
+    />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+
+    <!-- 社交分享（Open Graph / Twitter Card） -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SimplePPT" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content="SimplePPT — 先问清楚，再动手做 PPT" />
+    <meta
+      property="og:description"
+      content="先访谈需求、规划便利贴大纲、逐页检索真实资料，再直接生成整页 SVG 幻灯片，可预览、编辑并导出 PPTX。"
+    />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="SimplePPT 应用图标与标语" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SimplePPT — 先问清楚，再动手做 PPT" />
+    <meta
+      name="twitter:description"
+      content="先访谈需求、规划便利贴大纲、逐页检索真实资料，再直接生成整页 SVG 幻灯片，可预览、编辑并导出 PPTX。"
+    />
+    <meta name="twitter:image" content="/og-image.png" />
+    <meta name="twitter:image:alt" content="SimplePPT 应用图标与标语" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

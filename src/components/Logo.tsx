@@ -1,0 +1,28 @@
+export function Logo({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className="shrink-0">
+      <defs>
+        <linearGradient id="simpleppt-logo-slide" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ED6C47" />
+          <stop offset="1" stopColor="#C43E1C" />
+        </linearGradient>
+      </defs>
+      {/* PPT 主色磁贴 */}
+      <rect width="32" height="32" rx="7" fill="url(#simpleppt-logo-slide)" />
+      {/* 大号幻灯片页：内嵌 PPT 三个字母 */}
+      <rect x="5" y="4.5" width="22" height="15" rx="1.5" fill="#ffffff" />
+      <g fill="#D24726">
+        <path d="M8.5 16V8h3.8c2.2 0 3.4 1 3.4 2.7s-1.2 2.7-3.4 2.7h-1.6V16Zm2.2-4.4h1.4c.9 0 1.4-.3 1.4-.9s-.5-.9-1.4-.9h-1.4Z" />
+        <path d="M16 16V8h3.8c2.2 0 3.4 1 3.4 2.7s-1.2 2.7-3.4 2.7h-1.6V16Zm2.2-4.4h1.4c.9 0 1.4-.3 1.4-.9s-.5-.9-1.4-.9h-1.4Z" />
+        <path d="M22.5 8h4v1.8h-1V16h-2V9.8h-1Z" />
+      </g>
+      {/* 角落的黄色便利贴（带折角与手写线） */}
+      <g transform="rotate(-8 23.5 21.5)">
+        <rect x="18.5" y="16.5" width="10" height="10" rx="1.2" fill="#FFD75E" />
+        <path d="M28.5 16.5 L28.5 20 L25 16.5 Z" fill="#E8A500" />
+        <rect x="21" y="20.5" width="4" height="1.2" rx="0.6" fill="#8A5A00" />
+        <rect x="21" y="23" width="5.2" height="1.2" rx="0.6" fill="#8A5A00" opacity="0.8" />
+      </g>
+    </svg>
+  )
+}

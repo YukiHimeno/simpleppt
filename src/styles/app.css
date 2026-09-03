@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* 语义化命名：canvas 画布 / ink 墨色 / panel 面板 / overlay 悬浮层，
+   强调色使用 PowerPoint 同款橘红（ppt-accent）。 */
+:root {
+  --canvas: oklch(100% 0 0);
+  --ink: oklch(26.97% 0 0);
+  --panel: oklch(100% 0 0);
+  --panel-ink: oklch(26.97% 0 0);
+  --overlay: oklch(100% 0 0);
+  --overlay-ink: oklch(26.97% 0 0);
+  --ppt-accent: #d24726;
+  --ppt-accent-ink: #ffffff;
+  --neutral: oklch(96.86% 0 0);
+  --neutral-ink: oklch(26.97% 0 0);
+  --subtle: oklch(96.96% 0 0);
+  --subtle-ink: oklch(55.47% 0 0);
+  --hover: oklch(95% 0 0);
+  --hover-ink: oklch(26.97% 0 0);
+  --danger: oklch(54.09% 0.2143 28.4788);
+  --danger-ink: #ffffff;
+  --line: oklch(86.1% 0 0);
+  --field: oklch(92.34% 0 0);
+  --focus-ring: #d24726;
+  --corner: 0rem;
+}
+
+.dark {
+  --canvas: oklch(23.76% 0 0);
+  --ink: oklch(93.89% 0 0);
+  --panel: oklch(26.97% 0 0);
+  --panel-ink: oklch(93.89% 0 0);
+  --overlay: oklch(26.97% 0 0);
+  --overlay-ink: oklch(93.89% 0 0);
+  --ppt-accent: #ff8b66;
+  --ppt-accent-ink: #2c0d03;
+  --neutral: oklch(32.11% 0 0);
+  --neutral-ink: oklch(93.89% 0 0);
+  --subtle: oklch(30.08% 0 0);
+  --subtle-ink: oklch(72.44% 0 0);
+  --hover: oklch(30.08% 0 0);
+  --hover-ink: oklch(93.89% 0 0);
+  --danger: oklch(57.89% 0.2217 27.8067);
+  --danger-ink: #ffffff;
+  --line: oklch(37.05% 0 0);
+  --field: oklch(37.05% 0 0);
+  --focus-ring: #ff8b66;
+  --corner: 0rem;
+}
+
+@theme inline {
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --color-card: var(--panel);
+  --color-card-foreground: var(--panel-ink);
+  --color-popover: var(--overlay);
+  --color-popover-foreground: var(--overlay-ink);
+  --color-primary: var(--ppt-accent);
+  --color-primary-foreground: var(--ppt-accent-ink);
+  --color-secondary: var(--neutral);
+  --color-secondary-foreground: var(--neutral-ink);
+  --color-muted: var(--subtle);
+  --color-muted-foreground: var(--subtle-ink);
+  --color-accent: var(--hover);
+  --color-accent-foreground: var(--hover-ink);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--danger-ink);
+  --color-border: var(--line);
+  --color-input: var(--field);
+  --color-ring: var(--focus-ring);
+  --radius-sm: var(--corner);
+  --radius-md: var(--corner);
+  --radius-lg: var(--corner);
+  --radius-xl: var(--corner);
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --animate-fade-up: fade-up 0.3s ease-out both;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 幽灵思维链：生成中闪动（"内容已就绪"不使用这两个类） */
+.ghost-shimmer {
+  background-image: linear-gradient(90deg, transparent 0%, var(--ink) 50%, transparent 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ghost-shimmer 1.6s linear infinite;
+}
+
+@keyframes ghost-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.ghost-breathe {
+  animation: ghost-breathe 1.2s ease-in-out infinite;
+}
+
+@keyframes ghost-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none !important;
+  }
+  .ghost-shimmer,
+  .ghost-breathe {
+    animation: none !important;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--ppt-accent) 24%, transparent);
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
