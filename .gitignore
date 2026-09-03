@@ -1,0 +1,28 @@
+node_modules
+dist
+*.local
+.DS_Store
+
+# 本地工具 / 环境目录
+.zcode/
+.agents/
+.codex/
+
+
+# 测试 / 调试残留
+*.out.cjs
+*.tmp.ts
+poly-*
+test-*
+*.log
+npm-debug.log*
+coverage/
+.nyc_output/
+
+# 编辑器 / 构建缓存
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+*.tsbuildinfo
+.cache/

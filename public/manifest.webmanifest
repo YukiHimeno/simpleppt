@@ -1,0 +1,33 @@
+{
+  "name": "SimplePPT — 先问清楚，再动手做 PPT",
+  "short_name": "SimplePPT",
+  "description": "SimplePPT：先访谈需求、规划便利贴大纲、逐页检索真实资料，再直接生成整页 SVG 幻灯片，可预览、编辑并导出 PPTX。",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#C43E1C",
+  "categories": ["productivity", "business"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
