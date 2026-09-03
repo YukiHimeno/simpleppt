@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Github, Monitor, Moon, Palette, RotateCcw, Settings2, Sun } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Download, Github, Monitor, Moon, Palette, RotateCcw, Settings2, Sun, Upload } from 'lucide-react'
 import { AppCtx, type AppCtxValue, type Stage } from './lib/app-context'
 import {
   clearProject,
@@ -12,6 +12,7 @@ import {
   saveTheme,
   type ThemeMode,
 } from './lib/store'
+import { exportProjectFile, readProjectFile } from './lib/project-io'
 import { Badge, Button, Dialog, ToastProvider, cn } from './components/ui'
 import { Logo } from './components/Logo'
 import { SettingsDialog } from './components/SettingsDialog'
@@ -36,6 +37,21 @@ export default function App() {
   const [styleOpen, setStyleOpen] = useState(false)
   const [confirmNew, setConfirmNew] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [imported, setImported] = useState<Project | null>(null)
+  const [importError, setImportError] = useState('')
+  const importInputRef = useRef<HTMLInputElement>(null)
+
+  async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      setImported(await readProjectFile(file))
+      setImportError('')
+    } catch (err: any) {
+      setImportError(err?.message ?? String(err))
+    }
+  }
 
   useEffect(() => {
     saveSettings(settings)
@@ -145,7 +161,28 @@ export default function App() {
                 </Button>
                 {menuOpen && (
                   <div data-settings-menu className="absolute bottom-full right-0 z-50 mb-2 w-60 rounded-md border border-border bg-popover p-1.5 text-sm shadow-2xl">
-                    <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">主题</div>
+                    <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">项目</div>
+                    <button
+                      className="flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-left hover:bg-muted"
+                      onClick={() => {
+                        exportProjectFile(project)
+                        closeMenu()
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                      导出项目备份
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-left hover:bg-muted"
+                      onClick={() => {
+                        closeMenu()
+                        importInputRef.current?.click()
+                      }}
+                    >
+                      <Upload className="h-4 w-4" />
+                      导入项目备份
+                    </button>
+                    <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">外观</div>
                     {[
                       { v: 'auto', icon: Monitor, label: '自动（跟随系统）' },
                       { v: 'light', icon: Sun, label: '浅色' },
@@ -229,6 +266,36 @@ export default function App() {
               }}
             >
               清空并新建
+            </Button>
+          </div>
+        </Dialog>
+        <input ref={importInputRef} type="file" accept="application/json,.json" className="hidden" onChange={onImportFile} />
+
+        <Dialog open={imported !== null} onClose={() => setImported(null)} title="导入项目备份？">
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            将用备份「{imported?.topic}」覆盖当前项目（含访谈、大纲、检索资料与已生成的幻灯片），此操作不可撤销。
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setImported(null)}>
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (imported) setProject(imported)
+                setImported(null)
+              }}
+            >
+              覆盖导入
+            </Button>
+          </div>
+        </Dialog>
+
+        <Dialog open={importError !== ''} onClose={() => setImportError('')} title="导入失败">
+          <p className="text-sm leading-relaxed text-muted-foreground">{importError}</p>
+          <div className="mt-4 flex justify-end">
+            <Button variant="secondary" onClick={() => setImportError('')}>
+              知道了
             </Button>
           </div>
         </Dialog>
