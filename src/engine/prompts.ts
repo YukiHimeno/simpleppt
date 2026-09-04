@@ -375,7 +375,10 @@ export function slideStage(input: {
     data: r.data ?? null,
     rect: { x: r.x, y: r.y, w: r.w, h: r.h },
   }))
-  const titleSize = style.carded ? l.TITLE_SIZE : l.TITLE_SIZE + 8
+  // carded 只控制是否画卡片容器；朴素干货由 plain 单独标记，两者不再互相绑定
+  const plain = style.plain === true
+  const carded = style.carded === true
+  const titleSize = plain ? l.TITLE_SIZE + 8 : l.TITLE_SIZE
   const titleOverflowSize = Math.max(22, titleSize - 6)
   const factsText = facts.length
     ? facts.map((f) => `• ${f.text}${f.source ? `（${f.source}）` : ''}`).join('\n').slice(0, 1400)
@@ -383,7 +386,7 @@ export function slideStage(input: {
   const researchBlock =
     plan.pageType === 'quote' && quote ? `引言：「${quote.text}」——${quote.author || ''}` : factsText
 
-  const styleRules = style.carded
+  const styleRules = carded
     ? `## Bento 卡片画法
 下方给出每张卡片的精确矩形 {x,y,w,h} 与内容。每张卡片：
 1. 容器：<rect x y width height rx="${style.radius}" fill="card" stroke="border" stroke-width="1"/>；accent 焦点卡片改为 fill="accentA" stroke="accent" stroke-width="1.2"
@@ -400,7 +403,8 @@ export function slideStage(input: {
    - table：表头 12px muted + border 底线，数据行 14px fg 行高 30
    - highlight：居中 22px fg 字重 600 金句，上方 40px 宽 accent 短横线装饰
 4. 层级原则：一页只有一个视觉焦点（accent 卡片）；accent 面积 < 10%；非焦点卡片克制、留白充足。**内容放不下时缩减条目数，绝不缩小字号到 12 以下硬塞。**`
-    : `## 朴素干货版式（无卡片，严禁装饰）
+    : plain
+      ? `## 朴素干货版式（无卡片，严禁装饰）
 这是最朴素的讲义式 PPT：白底黑字、信息密度高。**千万不能有任何小装饰**：不画卡片矩形、圆角容器、阴影、边框、分隔小线、强调色短横线、几何点缀。矩形只允许用于黄色荧光笔底。
 - 页边距尽量小：内容铺满画布，四周留白 ≤ 24px，避免大段空白。
 - 规划稿的卡片矩形只是文字定位参考，**不是容器**：不要在矩形四周留内边距，直接从矩形边缘开始排字；相邻卡片（区块）之间的文字间隔只留 10-14px，让不同区块的文字自然靠近、版面紧凑，绝不为了对齐留大空白。
@@ -421,9 +425,18 @@ export function slideStage(input: {
 - timeline：fg 色横线 + accent 实心圆点 + 20-22px fg 标签 + 15-17px muted 说明。
 - 每一页在角落或标题旁放一个"问号小人"占位元素：<g data-question-person="1" x="…" y="…" size="…"/>（只需给 x/y/size 三个数字属性，size 取 40-60，x/y 是放图位置）——**不要自己画小人的矢量轮廓**，系统会自动把这个占位替换成真实的问号小人图片，制造"还没想完/留个问号"的即兴感。
 - 整体像一个人赶时间随手整理的讲义：直接、清楚、能划重点、略歪但不乱，真实感强。放不下就精简条目数，绝不缩小字号硬塞。`
-  const ratioNote = style.carded
+    : `## 无卡片版式（沿用当前配色的直接排版）
+不画卡片矩形、圆角容器与几何装饰，但保留该风格的字号、字重与配色体系；不是朴素干货：**不加艺术字标题、荧光笔、红圈、问号小人等手写装饰**。
+- 规划稿的卡片矩形仅作为文字定位参考：文字按这些矩形分区排版，区块之间留出 24px 左右的自然留白，左右保持对齐，内容不超出对应矩形。
+- 区块标题 20-24px 字重 600 填 fg；正文/要点 15-18px 填 muted（关键词句用 fg + 字重 600）；行距 26-30。
+- bullets：每条前画 <circle r="3.5" fill="accent"/>，文字与区块标题同宽排版；stat：数字 48-54px 字重 700 填 accent，下方 muted 小标签。
+- 图表沿用配色体系：柱体填 accent（最大值一根 accentDeep）、基线 stroke="border"；timeline 用 accent 横线与实心圆点。
+- 放不下时精简条目数，绝不缩小字号到 12 以下硬塞。`
+  const ratioNote = carded
     ? `- 内容区范围：y 从 ${l.CONTENT_TOP} 到 ${l.CONTENT_BOTTOM}（Bento 网格已按此划分）`
-    : `- 内容区范围：y 从 ${l.CONTENT_TOP} 到 ${l.CONTENT_BOTTOM}（规划稿的矩形指示各区块位置，但不要画出卡片底色）。朴素干货要贴边排版：四周留白 ≤ 24px，卡片矩形之间不留空隙，相邻区块的文字间隔 10-14px，铺满画布。`
+    : plain
+      ? `- 内容区范围：y 从 ${l.CONTENT_TOP} 到 ${l.CONTENT_BOTTOM}（规划稿的矩形指示各区块位置，但不要画出卡片底色）。朴素干货要贴边排版：四周留白 ≤ 24px，卡片矩形之间不留空隙，相邻区块的文字间隔 10-14px，铺满画布。`
+      : `- 内容区范围：y 从 ${l.CONTENT_TOP} 到 ${l.CONTENT_BOTTOM}（规划稿的矩形仅作文字定位，不画卡片容器；文字不超出矩形）。`
 
   const instructions = `你是资深幻灯片设计师，为「${topic}」汇报绘制第 ${index}/${total} 页。**直接输出一个完整的 <svg> 源码**：不解释、不用 markdown 围栏、不要任何 <svg> 以外的文字。
 
@@ -441,7 +454,13 @@ export function slideStage(input: {
 ## 画布结构与配色（严格使用这些色值）
 画布 ${l.W}×${l.H}。配色 tokens：${tokensBlock(style)}
 - 全幅背景 rect：填 bg
-- 页眉：kicker 在 (${l.PAD}, ${l.KICKER_Y})，字号 12，字重 600，填 accent，letter-spacing 2；主标题基线 (${l.PAD}, ${l.TITLE_Y})，字号 ${titleSize}，最多 22 个字（超长就缩到 ${titleOverflowSize}px 或删词）。${style.carded ? 'Bento 卡片版式：主标题 700 填 fg。' : '朴素干货：标题位置不固定，按下方朴素干货版式规则里的权重自选（左上角 / 无标题 / 顶部居中 / 左侧竖排 / 居中大字）；若选默认左上角，基线参考 y=${l.TITLE_Y}。主标题用 Office 默认艺术字样式（font-weight=800 加粗，配色随机：纯色蓝 #4472C4/橙 #ED7D31/金 #FFC000/浅蓝 #5B9BD5/绿 #70AD47、黄底橙描边 #FFFF00+#FFC000、白字粗描边加投影、镂空字、白字加荧光边等），可加 1-2° 旋转，不画强调色短横线。'}
+- 页眉：kicker 在 (${l.PAD}, ${l.KICKER_Y})，字号 12，字重 600，填 accent，letter-spacing 2；主标题基线 (${l.PAD}, ${l.TITLE_Y})，字号 ${titleSize}，最多 22 个字（超长就缩到 ${titleOverflowSize}px 或删词）。${
+      carded
+        ? 'Bento 卡片版式：主标题 700 填 fg。'
+        : plain
+          ? '朴素干货：标题位置不固定，按下方朴素干货版式规则里的权重自选（左上角 / 无标题 / 顶部居中 / 左侧竖排 / 居中大字）；若选默认左上角，基线参考 y=' + l.TITLE_Y + '。主标题用 Office 默认艺术字样式（font-weight=800 加粗，配色随机：纯色蓝 #4472C4/橙 #ED7D31/金 #FFC000/浅蓝 #5B9BD5/绿 #70AD47、黄底橙描边 #FFFF00+#FFC000、白字粗描边加投影、镂空字、白字加荧光边等），可加 1-2° 旋转，不画强调色短横线。'
+          : '无卡片版式：主标题 700 填 fg（沿用当前风格字体与配色，不加艺术字）。'
+    }
 ${style.footer ? `- 页脚：基线 (${l.PAD}, ${l.FOOTER_Y}) 左侧 10px 填 muted 写「${topic} · SimplePPT」；右侧 (${l.W - l.PAD}, ${l.FOOTER_Y}) text-anchor="end" 写页码「${String(index).padStart(2, '0')} / ${String(total).padStart(2, '0')}」` : '- 页脚：无'}
 
 ${ratioNote}
@@ -449,9 +468,21 @@ ${ratioNote}
 ${styleRules}
 
 ## 特殊页面构图（无网格，cards 为空时使用）
-- cover：左对齐构图。${style.carded ? `accent 短横线 rect(x=${l.PAD},y=252,w=64,h=6,rx=3)；kicker 13px accent letter-spacing 3 在 (${l.PAD}, 226)；主标题 56px 字重 700 fg，基线 (${l.PAD}, 330)（超过 14 字拆两行，第二行基线 +72）；副标题 17px muted 一行，基线 (${l.PAD}, 386)；底部 meta (${l.PAD}, 640) 13px muted。右上象限一组克制的几何装饰：2 个同心圆环 stroke="accent" opacity 0.25-0.4 + 1 个小实心方块，不与文字重叠。` : `kicker 15px accent letter-spacing 2 在 (${l.PAD}, ${l.CONTENT_TOP + 24})；主标题用 Office 艺术字样式（font-weight=800、fill="rgba(255,255,0,0.42)"、stroke="#FFC000" stroke-width=2 paint-order="stroke"）78px，基线 (${l.PAD}, ${l.CONTENT_TOP + 110})（超 12 字拆两行）；**不画任何强调色短横线**；副标题 20px muted 一行，基线 +72；**不要页脚 meta 行**；右下角放一个"问号小人"占位：<g data-question-person="1" x="1024" y="150" size="64"/>（不要画矢量轮廓）。重点词可用荧光笔。`}
-- ending：居中构图。${style.carded ? `行动号召大字 46px 字重 700 fg 居中（y=${Math.round(l.H * 0.47)}），下方 16px muted 说明一行（+56），accent 短横线居中（-40）。` : `行动号召用 Office 艺术字样式 50px 居中（y=${Math.round(l.H * 0.47)}），下方 16px muted 说明一行（+60），不加任何短横线。`}
-- quote：居中构图。大引号「“」用 90px ${style.carded ? 'accent' : 'accent'} 字重 700（y=${Math.round(l.H * 0.34)}）；引文 26px fg 居中最多两行（y=${Math.round(l.H * 0.47)} 起）；署名 14px muted（y=${Math.round(l.H * 0.62)}）。
+- cover：左对齐构图。${
+      carded
+        ? `accent 短横线 rect(x=${l.PAD},y=252,w=64,h=6,rx=3)；kicker 13px accent letter-spacing 3 在 (${l.PAD}, 226)；主标题 56px 字重 700 fg，基线 (${l.PAD}, 330)（超过 14 字拆两行，第二行基线 +72）；副标题 17px muted 一行，基线 (${l.PAD}, 386)；底部 meta (${l.PAD}, 640) 13px muted。右上象限一组克制的几何装饰：2 个同心圆环 stroke="accent" opacity 0.25-0.4 + 1 个小实心方块，不与文字重叠。`
+        : plain
+          ? `kicker 15px accent letter-spacing 2 在 (${l.PAD}, ${l.CONTENT_TOP + 24})；主标题用 Office 艺术字样式（font-weight=800、fill="rgba(255,255,0,0.42)"、stroke="#FFC000" stroke-width=2 paint-order="stroke"）78px，基线 (${l.PAD}, ${l.CONTENT_TOP + 110})（超 12 字拆两行）；**不画任何强调色短横线**；副标题 20px muted 一行，基线 +72；**不要页脚 meta 行**；右下角放一个"问号小人"占位：<g data-question-person="1" x="1024" y="150" size="64"/>（不要画矢量轮廓）。重点词可用荧光笔。`
+          : `kicker 13px accent letter-spacing 3 在 (${l.PAD}, ${l.CONTENT_TOP + 24})；主标题 56px 字重 700 fg，基线 (${l.PAD}, ${l.CONTENT_TOP + 110})（超过 14 字拆两行，第二行基线 +72）；副标题 17px muted 一行（基线 +60）；不加几何装饰、不加页脚 meta 行。`
+    }
+- ending：居中构图。${
+      carded
+        ? `行动号召大字 46px 字重 700 fg 居中（y=${Math.round(l.H * 0.47)}），下方 16px muted 说明一行（+56），accent 短横线居中（-40）。`
+        : plain
+          ? `行动号召用 Office 艺术字样式 50px 居中（y=${Math.round(l.H * 0.47)}），下方 16px muted 说明一行（+60），不加任何短横线。`
+          : `行动号召大字 46px 字重 700 fg 居中（y=${Math.round(l.H * 0.47)}），下方 16px muted 说明一行（+56），不加任何短横线。`
+    }
+- quote：居中构图。大引号「“」用 90px accent 字重 700（y=${Math.round(l.H * 0.34)}）；引文 26px fg 居中最多两行（y=${Math.round(l.H * 0.47)} 起）；署名 14px muted（y=${Math.round(l.H * 0.62)}）。
 
 ## 待绘制页面
 【策划稿】${json({ title: plan.title, kicker: plan.kicker, message: plan.message, pageType: plan.pageType, cards: plan.cards })}

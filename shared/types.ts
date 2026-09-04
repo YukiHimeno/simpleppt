@@ -32,8 +32,10 @@ export interface SlideStyle {
   border: string
   accentA: string
   radius: number
-  /** true=Bento 卡片版式；false=朴素干货版式（无卡片、标红加粗/荧光笔强调） */
+  /** true=绘制 Bento 卡片底；false=不画卡片容器（与 plain 互相独立） */
   carded: boolean
+  /** true=朴素干货（手写讲义气质：艺术字标题、荧光笔、红圈、问号小人等） */
+  plain: boolean
   footer: boolean
 }
 
@@ -53,6 +55,7 @@ const BENTO_DARK: SlideStyle = {
   accentA: 'rgba(126,179,255,0.10)',
   radius: 18,
   carded: true,
+  plain: false,
   footer: true,
 }
 
@@ -89,6 +92,7 @@ const PLAIN: SlideStyle = {
   accentA: 'rgba(255,1,0,0.05)',
   radius: 0,
   carded: false,
+  plain: true,
   footer: false,
 }
 
@@ -109,6 +113,7 @@ const OFFICE_CLASSIC: SlideStyle = {
   accentA: 'rgba(68,114,196,0.08)',
   radius: 6,
   carded: true,
+  plain: false,
   footer: true,
 }
 

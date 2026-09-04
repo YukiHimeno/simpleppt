@@ -539,9 +539,63 @@ export function parseSvg(svg: string): { texts: TextLine[]; shapes: NativeShape[
 }
 
 
+/**
+ * 把同一视觉段落的多行文字合并成一个 TextLine 块。
+ * SVG 里一行往往是一个独立 <text>/<tspan>，若每个都导出成独立文本框，
+ * 在 PowerPoint 里会散成一堆单行文本框、很难整体编辑；这里按“字号/颜色/字重/
+ * 对齐/行距连续”把明显属于同一段落的相邻行收拢成一个多行文本框。
+ */
+function textStyleKey(t: TextLine): string {
+  const fill = t.fill.trim() === 'none' ? 'none' : hexOf(t.fill)
+  const stroke = t.stroke ? hexOf(t.stroke) : ''
+  return [t.size.toFixed(1), t.bold ? 'b' : '', t.anchor, fill, stroke, t.letterSpacing ?? 0].join('|')
+}
+
+/** 相邻两行是否属于同一个多行文本框 */
+function sameTextBlock(a: TextLine, b: TextLine): boolean {
+  if (textStyleKey(a) !== textStyleKey(b)) return false
+  const gap = b.y - a.y
+  if (gap < a.size * 0.7 || gap > a.size * 2.1) return false
+  // 行距随机错位（朴素干货允许 ±3px），对齐中心/左/右时 x 也允许小误差
+  return Math.abs(a.x - b.x) <= (a.anchor === 'middle' ? 10 : 9)
+}
+
+/**
+ * 把一个个文本行聚合成“视觉段落”。行内若自带 \n（一个 <text> 多行），先按
+ * 字号行高拆平，再参与聚合。
+ */
+function clusterTextLines(texts: TextLine[]): TextLine[][] {
+  const lines: TextLine[] = []
+  for (const t of texts) {
+    const parts = t.text.split(/\r?\n/)
+    if (parts.length <= 1) {
+      lines.push(t)
+      continue
+    }
+    parts.forEach((ln, i) => {
+      if (!ln.trim()) return
+      lines.push({ ...t, text: ln, y: t.y + i * t.size * 1.25 })
+    })
+  }
+  lines.sort((a, b) => a.y - b.y || a.x - b.x)
+  const blocks: TextLine[][] = []
+  let cur: TextLine[] = []
+  for (const ln of lines) {
+    const prev = cur[cur.length - 1]
+    if (prev && sameTextBlock(prev, ln)) {
+      cur.push(ln)
+    } else {
+      if (cur.length) blocks.push(cur)
+      cur = [ln]
+    }
+  }
+  if (cur.length) blocks.push(cur)
+  return blocks
+}
+
 /** 朴素干货风格使用等线，其他风格使用 PingFang SC */
 function fontFamily(style: SlideStyle): string {
-  return style.carded ? 'PingFang SC' : '等线'
+  return style.plain ? '等线' : 'PingFang SC'
 }
 
 /** 把 NativeShape 的填充转成 pptxgenjs fill（含透明度；无填充时显式 noFill 风格对象） */
@@ -654,8 +708,10 @@ export async function exportNativePptx(
       s.addImage({ data: im.href, x: toIn(im.x), y: toIn(im.y), w: toIn(im.w), h: toIn(im.h) })
     }
 
-    // 文本框
-    for (const t of texts) {
+    // 文本框：先把属于同一段落的行收拢成一个多行文本框，再逐个导出
+    for (const block of clusterTextLines(texts)) {
+      const t = block[0]
+      const multi = block.length > 1
       // fill="none" 是艺术字镂空层：PPT 文本框没有“无填充文字”，
       // 用幻灯片背景色当文字色 + 描边，才能得到“镂空字”效果，而不是默认的黑字。
       const isHollow = t.fill.trim() === 'none'
@@ -663,40 +719,41 @@ export async function exportNativePptx(
       const fillColor = isHollow ? null : parseColorAttr(t.fill, t.opacity ?? 1)
       const color = isHollow ? (bgFill ?? 'FFFFFF') : fillColor?.color
       const strokeColor = t.stroke ? hexOf(t.stroke) : ''
+      // 宽度按块内最宽的一行估算，禁止二次自动换行（避免窄宽导致意外拆行）
+      const ls = t.letterSpacing ?? 0
+      const wpx = Math.max(8, ...block.map((ln) => textWidthPx(ln.text, ln.size, ls)))
+      const gaps = block.slice(1).map((ln, i) => ln.y - block[i].y)
+      const gap = gaps.length ? Math.round(gaps.reduce((s, g) => s + g, 0) / gaps.length) : Math.round(t.size * 1.25)
+      let xpx = t.x
+      if (t.anchor === 'middle') xpx = t.x - wpx / 2
+      else if (t.anchor === 'end') xpx = t.x - wpx
       const baseOpts: Record<string, unknown> = {
+        x: toIn(xpx),
+        y: toIn(t.y - t.size * 0.82),
+        w: toIn(wpx),
+        // 多行文本框把整体高度撑起来，行距按 SVG 行高（px→pt）精确保留
+        h: toIn(multi ? (block.length - 1) * gap + t.size * 1.25 : t.size * 1.25),
         fontSize: pxToPt(t.size),
         fontFace: font,
         color: color || undefined,
         outline: strokeColor ? { color: strokeColor, size: Math.max(0.75, pxToPt(t.strokeWidth || 2)) } : undefined,
         bold: t.bold,
         align: t.anchor === 'middle' ? 'center' : t.anchor === 'end' ? 'right' : 'left',
-        valign: 'middle',
+        valign: multi ? 'top' : 'middle',
         // margin 必须是数组：pptxgenjs 里数字 0 会被当作“未设置”，文本框会退回 PPT 默认内边距
         margin: [0, 0, 0, 0] as [number, number, number, number],
         // SVG 里每行文字已经单独成行，禁止二次自动换行，避免估算宽度偏窄时被拆行溢出
         wrap: false,
         isTextBox: true,
       }
-      if (CJK.test(t.text)) baseOpts.lang = 'zh-CN'
-      if (t.letterSpacing) baseOpts.charSpacing = pxToPt(t.letterSpacing)
+      if (multi) baseOpts.lineSpacing = pxToPt(gap)
+      const whole = block.map((ln) => ln.text).join('\n')
+      if (CJK.test(whole)) baseOpts.lang = 'zh-CN'
+      if (ls) baseOpts.charSpacing = pxToPt(ls)
       if (fillColor?.transparency) baseOpts.transparency = fillColor.transparency
-      // 一个 <text> 内含多行（\n）时逐行拆成独立文本框，避免被塞进单个矮文本框造成错位
-      const lines = t.text.split(/\r?\n/)
-      for (let li = 0; li < lines.length; li++) {
-        const line = lines[li]
-        if (!line.trim()) continue
-        const wpx = Math.max(8, textWidthPx(line, t.size, t.letterSpacing ?? 0))
-        let xpx = t.x
-        if (t.anchor === 'middle') xpx = t.x - wpx / 2
-        else if (t.anchor === 'end') xpx = t.x - wpx
-        s.addText(line, {
-          ...baseOpts,
-          x: toIn(xpx),
-          y: toIn(t.y - t.size * 0.82 + li * t.size * 1.25),
-          w: toIn(wpx),
-          h: toIn(t.size * 1.25),
-        })
-      }
+      s.addText(whole, {
+        ...baseOpts,
+      })
     }
 
     if (note) s.addNotes(note)
