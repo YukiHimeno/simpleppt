@@ -1,82 +1,85 @@
-// 演示模式（Mock）：无需 API Key 即可走完六阶段流水线。
-// 幻灯片由参数化渲染器按当前风格现场绘制，所以切换风格后演示内容也随之变化。
+// Demo mode (Mock): walk through the whole pipeline without an API key.
+// Slides are drawn live by the parameterized renderer, so demo content
+// changes shape when you switch styles.
+// All sample text is fictional and written under the no-AI-tone rules:
+// concrete numbers, small everyday topic, no filler or grand claims.
 import type { InterviewQA, InterviewSummary, Outline, PagePlan, PageResearch, StickyPage } from 'shared/types'
 import { enrichPlan } from 'shared/bento'
 import type { SlideStyle } from 'shared/types'
 import { renderSlide } from './slide-renderer'
 
-export const MOCK_TOPIC = '智能助手在企业服务的落地路线'
+export const MOCK_TOPIC = '楼下面包店要不要上线外卖'
 
 export const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 export const mockQuestions: InterviewQA[] = [
   {
     q: '这份 PPT 给谁看？',
-    why: '决定信息密度与口吻：管理层要结论与钱，执行层要方法与细节。',
-    suggestions: ['公司管理层（决策者）', '业务部门负责人', '技术团队'],
-    a: '公司管理层（决策者）',
+    why: '决定要多细，店主自己看就讲账，合伙人看还要讲风险。',
+    suggestions: ['店主和合伙人', '就我自己', '帮家里拿主意的年轻人'],
+    a: '店主和合伙人',
   },
   {
-    q: '什么场合讲、讲多久？',
-    why: '决定页数与节奏：15 分钟内部汇报约 10 页，每页一个结论。',
-    suggestions: ['内部例会 · 15 分钟', '专题汇报 · 30 分钟', '全员宣讲 · 10 分钟'],
-    a: '内部例会 · 15 分钟',
+    q: '在什么场合讲、讲多久？',
+    why: '决定页数和节奏，十五分钟的小会大约十页。',
+    suggestions: ['晚饭后聊 · 15 分钟', '咖啡店小桌聊 · 10 分钟', '先自己过一遍'],
+    a: '晚饭后和合伙人聊 · 15 分钟',
   },
   {
-    q: '讲完后希望听众做什么？',
-    why: '没有行动目标的大纲只是资料汇编；目标是金字塔的塔尖。',
-    suggestions: ['批准试点预算', '成立专项小组', '先了解、不下决策'],
-    a: '批准 Q4 试点预算（约 80 万）',
+    q: '讲完希望做什么决定？',
+    why: '没有行动的 PPT 只是资料，这次要拍板试跑。',
+    suggestions: ['批准 6 周试跑，预算 ¥3000', '再调研一个月', '先只试 3 款面包'],
+    a: '批准 6 周试跑，预算 ¥3000',
   },
   {
-    q: '哪些内容必须覆盖？',
-    why: '圈定范围，避免做成面面俱到的百科。',
-    suggestions: ['痛点、路线、ROI', '案例与技术选型', '风险与合规'],
-    a: '痛点、三步路线、可量化收益',
+    q: '哪些事实必须摆上桌？',
+    why: '圈住范围，别把一家小店算成公司级项目。',
+    suggestions: ['周边需求和问卷', '单笔订单的成本账', '试跑节奏和退出条件'],
+    a: '问卷结果、单笔账、试跑节奏',
   },
   {
-    q: '风格上有什么偏好或禁忌？',
-    why: '决定版式与配色基调。',
-    suggestions: ['克制、数据驱动', '视觉冲击优先', '活泼轻松'],
-    a: '克制、数据驱动，少用大段文字',
+    q: '风格上有什么偏好？',
+    why: '决定版式和配色的底子。',
+    suggestions: ['克制、讲数字', '活泼一点', '极简'],
+    a: '克制、数字说话，不用大段形容词',
   },
 ]
 
 export const mockSummary: InterviewSummary = {
-  audience: '公司管理层，关注投入产出与风险，对技术细节不敏感',
-  goal: '批准 Q4 试点预算（约 80 万），并认可三步走路线图',
-  scene: '内部例会汇报，15 分钟，10 页以内',
-  scope: '必须覆盖：当前痛点、三步落地路线、可量化收益；不必展开技术选型',
-  tone: '克制、数据驱动，每个判断都有数字或案例支撑',
-  keyMessages: ['Agent 已跨过可用阈值，窗口期就是现在', '三步走 + 准入门禁，风险可控', '试点 90 天成本降 38%，建议 Q4 启动'],
-  risks: ['演示数据为示意口径，正式汇报需替换为内部实测数据'],
+  audience: '店主和合伙人，习惯看流水，不吃空概念',
+  goal: '同意先跑 6 周，上 8 款常温面包做周边闪送，花 ¥3000，用真实订单决定要不要长期做',
+  scene: '晚饭后小范围聊，15 分钟，10 页以内',
+  scope: '必须覆盖周边需求、单笔账和试跑节奏，不展开平台后台怎么设置',
+  tone: '克制、数字说话，每个判断都给本地数据或明确标演示',
+  keyMessages: ['周边问卷 214 份，76% 愿意付配送费', '一单约 ¥34，扣平台费用后毛利 ¥9.6', '先跑 6 周，按门槛决定扩不扩'],
+  risks: ['演示数据是示意口径，正式汇报前要换成店内实测'],
 }
 
 export const mockBackground: import('shared/types').Background = {
   summary:
-    '2025 年以来，大模型在长上下文、工具调用与多轮规划上的组合能力跨过可用阈值，Agent 从演示走向生产。客服、运维、研发效能是企业服务中落地最快的三个场景；头部企业已进入规模化部署阶段，行业讨论重心从「能不能用」转向「怎么管好用好」。',
+    '青枫苑门口的面包店开了 6 年，主要做早上 7 点到 11 点的堂食和熟客打包，一天大约 150 单，傍晚常剩约 20 个面包要打折处理。店离地铁口 300 米，周边 3 公里有 4 个小区、1 家三甲医院、1 所小学，约 1.2 万户。最近半年，附近美团和闪购上的面包订单在涨，同行里已经有两家上线外卖。',
   facts: [
-    { text: '2025 年起，多模态 + 工具调用成为企业 Agent 的标配形态（演示数据）', source: null, confidence: 'medium' },
-    { text: '客服与运维是 Agent 落地最快的两个场景，ROI 最先被验证（演示数据）', source: null, confidence: 'medium' },
-    { text: '行业共识：人机协同（辅助 → 接管 → 自治）是最稳的演进路径（演示数据）', source: null, confidence: 'high' },
-    { text: '数据安全与审计合规是企业采购 Agent 方案的第一决策因素（演示数据）', source: null, confidence: 'medium' },
-    { text: '试点 90 天人力成本普遍可降两到四成，取决于场景复用度（演示数据，待核实）', source: null, confidence: 'low' },
+    { text: '问卷 214 份，76% 的人愿意为 30 分钟内送达付 6 元配送费（演示口径）', source: null, confidence: 'medium' },
+    { text: '平台抽成与配送合计约占客单价的 18%（演示口径）', source: null, confidence: 'medium' },
+    { text: '附近两家同行已上线外卖，月订单分别约 300 单和 450 单（演示口径，待核实）', source: null, confidence: 'low' },
+    { text: '店里每天打烊前约有 20 个面包需要处理，正好是试跑的最小货源（演示口径）', source: null, confidence: 'medium' },
+    { text: '周边写字楼下午 3 点后的下午茶订单增长最快（演示口径，待核实）', source: null, confidence: 'low' },
   ],
-  angles: ['从成本视角切入：降本增效的账怎么算', '从风险视角切入：为什么现在不该观望', '从组织视角切入：一线如何接受 Agent'],
+  angles: ['从需求切入，看周边到底有没有人买', '从账切入，算一单赚多少、多少单能回本', '从节奏切入，先跑 6 周再决定扩不扩'],
   sources: [],
 }
 
 export const mockOutline: Outline = {
-  coreMessage: '2026 年是 Agent 从试点走向生产的窗口期，建议按三步路线在 Q4 启动试点。',
+  coreMessage: '先按 8 款常温面包加 3 公里闪送跑 6 周，用真实订单和单笔账决定要不要长期上线外卖。',
   pages: [
-    { id: 'p1', title: '智能助手企业服务落地路线', takeaway: '智能助手企业服务落地路线', group: '', role: 'cover', pageType: 'cover', keyPoints: ['管理层汇报', 'SimplePPT 演示'] },
-    { id: 'p2', title: '今天讲三件事', takeaway: '先共识窗口期，再对齐路线，最后算清收益。', group: '', role: 'agenda', pageType: 'agenda', keyPoints: ['为什么是现在', '怎么落地', '值不值'] },
-    { id: 'p3', title: 'Agent 已从演示走向生产', takeaway: '能力跨过可用阈值，Agent 第一次能在真实业务里端到端交付。', group: '为什么是现在', role: 'point', pageType: 'content', keyPoints: ['长上下文 + 工具调用成熟', '失败率降到可运营区间', '从“能不能用”到“怎么管好”'] },
-    { id: 'p4', title: '试点数据验证了价值', takeaway: '试点 90 天，人工成本降 38%，满意度不降反升。', group: '为什么是现在', role: 'support', pageType: 'data', keyPoints: ['成本 -38%', '首响效率 3.2×', '满意度 +11pts'] },
-    { id: 'p5', title: '三步走：辅助 → 接管 → 自治', takeaway: '渐进式路线让每一步都有数据验证，风险可控。', group: '怎么落地', role: 'point', pageType: 'content', keyPoints: ['Q3 辅助坐席', 'Q4 部分接管', 'H1 全自治闭环'] },
-    { id: 'p6', title: '每一步都有准入门禁', takeaway: '不达标不升级，出问题一键回滚，风险被机制锁住。', group: '怎么落地', role: 'support', pageType: 'content', keyPoints: ['完成率 ≥ 90% 才升级', '成本单均低于人工 30%', '无 P0 事故、日志可回放'] },
-    { id: 'p7', title: '一线的声音', takeaway: '试点团队从抵触到依赖，用了不到 30 天。', group: '', role: 'support', pageType: 'quote', keyPoints: [] },
-    { id: 'p8', title: '建议：Q4 启动试点', takeaway: '预算 80 万、两个场景、90 天见效。', group: '', role: 'ending', pageType: 'ending', keyPoints: ['预算 ¥80 万', '首批 2 个场景', '90 天复盘'] },
+    { id: 'p1', title: '楼下面包店的外卖试跑', takeaway: '楼下面包店的外卖试跑', group: '', role: 'cover', pageType: 'cover', keyPoints: ['给店主和合伙人看', 'SimplePPT 演示'] },
+    { id: 'p2', title: '今晚聊三件事', takeaway: '先看需求真不真，再算一单赚不赚，最后定怎么试跑。', group: '', role: 'agenda', pageType: 'agenda', keyPoints: ['需求真不真', '一单赚不赚', '怎么先试跑'] },
+    { id: 'p3', title: '买的人就在周边 3 公里', takeaway: '问卷和同行单量都指向同一件事，附近的订单在起来。', group: '需求真不真', role: 'point', pageType: 'content', keyPoints: ['问卷 214 份，76% 愿付配送费', '业主群有人主动问', '下午茶涨得最快'] },
+    { id: 'p4', title: '一单能赚多少', takeaway: '一单约 ¥34，平台费用约占 18%，单均毛利 ¥9.6。', group: '一单赚不赚', role: 'support', pageType: 'data', keyPoints: ['客单价 ¥34', '平台占比 18%', '单均毛利 ¥9.6'] },
+    { id: 'p5', title: '试跑分三步走', takeaway: '每步有门槛，过了才加码，不过就停。', group: '怎么先试跑', role: 'point', pageType: 'content', keyPoints: ['第 1 周上 8 款常温面包', '第 3 周加自提', '第 5 周试套餐'] },
+    { id: 'p6', title: '退出的门槛先写好', takeaway: '什么算成功、什么算失败，开跑前就说死。', group: '怎么先试跑', role: 'support', pageType: 'content', keyPoints: ['连续 2 周日均 ≥ 15 单', '单均毛利 ≥ ¥8', '处理的面包没变多'] },
+    { id: 'p7', title: '业主群里一句话', takeaway: '早上送完孩子顺路来取，比跑店里快。', group: '', role: 'support', pageType: 'quote', keyPoints: [] },
+    { id: 'p8', title: '先跑 6 周再决定', takeaway: '预算 ¥3000、8 款面包、6 周复盘。', group: '', role: 'ending', pageType: 'ending', keyPoints: ['预算 ¥3000', '8 款常温面包', '6 周复盘'] },
   ],
 }
 
@@ -89,96 +92,98 @@ export function mockResearchMap(): Record<string, PageResearch> {
     status: 'done',
   })
   return {
-    p1: mk('p1', '封面页无需检索资料。', []),
-    p2: mk('p2', '目录页无需检索资料。', []),
-    p3: mk('p3', '证明“能力已跨阈值”，用能力指标与部署面数据。', [
-      ['长上下文 + 工具调用组合后，端到端任务完成率首次超过 90%（演示数据）', 'high'],
-      ['行业讨论重心已从“能不能用”转向“怎么管好用好”（演示数据）', 'medium'],
-      ['企业 Agent 采购决策中，安全与审计合规排第一位（演示数据）', 'medium'],
+    p1: mk('p1', 'Cover page needs no research.', []),
+    p2: mk('p2', 'Agenda page needs no research.', []),
+    p3: mk('p3', 'Show the demand is real: survey counts plus what nearby shops are doing.', [
+      ['青枫苑和枫林里业主群最近 30 天出现过 12 次“这家面包能送吗”（演示数据）', 'high'],
+      ['问卷里 76% 愿意为 30 分钟内送达付 6 元配送费（演示数据）', 'medium'],
+      ['周边两家同行已上线外卖，月单量在涨（演示数据，待核实）', 'medium'],
     ]),
-    p4: mk('p4', '用试点 90 天的三组数据说明价值：成本、效率、满意度。', [
-      ['试点 90 天人工坐席成本下降 38%，主要来自重复问询的自动处理（演示数据）', 'high'],
-      ['夜间与高峰时段首响效率提升 3.2 倍（演示数据）', 'medium'],
-      ['同卷 NPS 净增 11 个点，客户满意度不降反升（演示数据）', 'medium'],
+    p4: mk('p4', 'Use the per-order account to explain what one order earns.', [
+      ['一单客单价约 ¥34，平台抽成与配送合计约占 18%（演示口径）', 'high'],
+      ['按 ¥9.6 的单均毛利，日均 15 单约等于一周覆盖基本成本（演示口径）', 'medium'],
+      ['6 周试跑的日均订单从 8 单爬到 27 单（演示数据）', 'medium'],
     ]),
-    p5: mk('p5', '说明三步走路线的节奏与各阶段形态。', [
-      ['辅助 → 接管 → 自治的渐进路径是企业 Agent 落地的主流共识（演示数据）', 'high'],
-      ['辅助阶段即可上线：自动草稿 + 人工审核，风险最低（演示数据）', 'medium'],
+    p5: mk('p5', 'Explain the three-stage trial rhythm and what each stage adds.', [
+      ['第 1 周只上卖得最好的 8 款常温面包，货损风险最小（演示口径）', 'high'],
+      ['第 3 周加 11 点前自提，免配送费，正好接早高峰（演示口径）', 'medium'],
     ]),
-    p6: mk('p6', '强调机制化风控：量化准入门禁与一键回滚。', [
-      ['成熟团队普遍设置量化门禁：完成率、成本、事故率三项达标才扩大范围（演示数据）', 'medium'],
-      ['灰度池隔离 + 日志全量可回放是审计合规的底线配置（演示数据）', 'high'],
+    p6: mk('p6', 'Write down the go/no-go gates before starting.', [
+      ['继续做下去的门槛是连续 2 周日均 ≥ 15 单、单均毛利 ≥ ¥8（演示口径）', 'medium'],
+      ['差评 48 小时内处理，面包打烊前处理量不增加（演示口径）', 'high'],
     ]),
-    p7: mk('p7', '一句来自一线的证言，增强可信度。', [], { text: '上线 90 天，人工成本降了三成，客户满意度反而涨了 11 个点。', author: '试点运营负责人（演示）' }),
-    p8: mk('p8', '行动页无需检索，复用第 4、5 页结论。', []),
+    p7: mk('p7', 'One sentence from a neighbor makes the case believable.', [], { text: '早上送完孩子顺路来取，比跑店里快。', author: '青枫苑业主 张女士（问卷原话）' }),
+    p8: mk('p8', 'Action page reuses pages 4 and 5 conclusions, no research needed.', []),
   }
 }
 
 export function mockPlans(): PagePlan[] {
   const plans: Omit<PagePlan, 'rects'>[] = [
-    { pageId: 'p1', index: 1, title: '智能助手企业服务落地路线', kicker: 'SMART SERVICE BRIEF', message: '2026 年，从试点走向生产的三步走路线 · 管理层汇报', pageType: 'cover', speakerNote: 'SimplePPT · 演示数据 · 2026-09', cards: [] },
+    { pageId: 'p1', index: 1, title: '楼下面包店的外卖试跑', kicker: '社区小店试跑计划', message: '先用 6 周、8 款面包、¥3000 预算，把要不要长期做这件事算清楚。', pageType: 'cover', speakerNote: 'SimplePPT 演示数据 · 一页讲清试跑计划', cards: [] },
     {
-      pageId: 'p2', index: 2, title: '今天讲三件事', kicker: 'AGENDA', message: '先共识窗口期，再对齐路线，最后算清收益。', pageType: 'agenda', speakerNote: '一句话预告结论，降低听众的信息焦虑。',
+      pageId: 'p2', index: 2, title: '今晚聊三件事', kicker: 'AGENDA', message: '先看需求真不真，再算一单赚不赚，最后定怎么试跑。', pageType: 'agenda', speakerNote: '开头一句话预告结论，让听的人先放下手机。',
       cards: [
-        { col: 1, colSpan: 4, row: 1, rowSpan: 4, kind: 'bullets', title: '为什么是现在', content: ['Agent 已过可用阈值', '头部开始规模化', '内部工具链成熟'], accent: true },
-        { col: 5, colSpan: 4, row: 1, rowSpan: 4, kind: 'bullets', title: '怎么落地', content: ['三步走路线', '每步有准入门禁', '90 天见成效'] },
-        { col: 9, colSpan: 4, row: 1, rowSpan: 4, kind: 'bullets', title: '值不值', content: ['成本降 38%', '满意度 +11pts', '建议 Q4 启动'] },
+        { col: 1, colSpan: 4, row: 1, rowSpan: 4, kind: 'bullets', title: '需求真不真', content: ['问卷 214 份，76% 愿付配送费', '3 公里内 4 个小区和 1 家医院', '两家同行已上线，单量在涨'], accent: true },
+        { col: 5, colSpan: 4, row: 1, rowSpan: 4, kind: 'bullets', title: '一单赚不赚', content: ['客单价约 ¥34', '平台费用约占 18%', '单均毛利 ¥9.6'] },
+        { col: 9, colSpan: 4, row: 1, rowSpan: 4, kind: 'bullets', title: '怎么先试跑', content: ['8 款常温面包起跑', '6 周看 4 个门槛', '不达标就退'] },
       ],
     },
     {
-      pageId: 'p3', index: 3, title: 'Agent 已从演示走向生产', kicker: '为什么是现在', message: '能力跨过可用阈值，Agent 第一次能在真实业务里端到端交付。', pageType: 'content', speakerNote: '强调“第一次”：不是参数更好看，而是失败率可运营。',
+      pageId: 'p3', index: 3, title: '买的人就在周边 3 公里', kicker: '需求真不真', message: '问卷和同行单量指向同一件事，附近的订单在起来。', pageType: 'content', speakerNote: '强调不是拍脑袋，问卷和业主群都给了信号。',
       cards: [
-        { col: 1, colSpan: 7, row: 1, rowSpan: 4, kind: 'text', title: '大模型能力跨过可用阈值', content: '2025 年起，长上下文、工具调用与多轮规划的组合，让 Agent 第一次能在真实业务里稳定完成端到端任务。失败率降到可运营区间，“能不能用”变成了“怎么管好用好”。\n试点端到端任务完成率：90%+', accent: true },
-        { col: 8, colSpan: 5, row: 1, rowSpan: 2, kind: 'text', title: '头部企业已规模化部署', content: '客服、运维、研发效能三个场景先行，Agent 成为标准配置。' },
-        { col: 8, colSpan: 5, row: 3, rowSpan: 2, kind: 'text', title: '内部工具链已经成熟', content: '权限、审计、评测框架齐备，缺的只是场景选择与运营方法。' },
+        { col: 1, colSpan: 7, row: 1, rowSpan: 4, kind: 'text', title: '问卷 214 份，76% 愿意等 30 分钟', content: '到店熟客问卷收回来 214 份，76% 愿意为 30 分钟内送达付 6 元配送费。最积极的是上班族和早上送孩子的家长，这两类人正好是店里早高峰的主力。\n愿意付配送费的人占 76%，日均需求估计在 25 到 35 单之间。', accent: true },
+        { col: 8, colSpan: 5, row: 1, rowSpan: 2, kind: 'text', title: '业主群已经有人主动问', content: '青枫苑和对面枫林里的业主群，最近 30 天出现过 12 次“这家面包能送吗”。' },
+        { col: 8, colSpan: 5, row: 3, rowSpan: 2, kind: 'text', title: '下午茶涨得最快', content: '周边写字楼下午 3 点后的需求增长最快，正好接在上午烘焙结束之后。' },
       ],
     },
     {
-      pageId: 'p4', index: 4, title: '试点数据验证了价值', kicker: '为什么是现在', message: '试点 90 天，人工成本降 38%，满意度不降反升。', pageType: 'data', speakerNote: '成本下降来自自动处理重复问询，不是裁人；口径在附录。',
+      pageId: 'p4', index: 4, title: '一单能赚多少', kicker: '一单赚不赚', message: '一单约 ¥34，平台费用约占 18%，单均毛利 ¥9.6。', pageType: 'data', speakerNote: '数字都是演示口径，正式汇报换成店内实测。',
       cards: [
-        { col: 1, colSpan: 4, row: 1, rowSpan: 1, kind: 'stat', content: '-38%', title: '人工坐席成本（90 天）' },
-        { col: 5, colSpan: 4, row: 1, rowSpan: 1, kind: 'stat', content: '3.2×', title: '首响效率提升' },
-        { col: 9, colSpan: 4, row: 1, rowSpan: 1, kind: 'stat', content: '+11pts', title: '客户满意度 NPS 净增' },
-        { col: 1, colSpan: 8, row: 2, rowSpan: 3, kind: 'chart-bar', title: '处理一单的平均耗时（分钟）', content: '', data: [{ label: '接手前', value: 9.2 }, { label: '第 2 周', value: 7.4 }, { label: '第 4 周', value: 6.1 }, { label: '第 8 周', value: 4.6 }, { label: '第 12 周', value: 3.4 }] },
-        { col: 9, colSpan: 4, row: 2, rowSpan: 3, kind: 'text', title: '怎么读这组数据', content: '成本下降主要来自重复问询的自动处理，而非裁撤坐席；效率提升集中在夜间与高峰时段。演示数据仅作示意。', accent: true },
+        { col: 1, colSpan: 4, row: 1, rowSpan: 1, kind: 'stat', content: '¥34', title: '平均客单价' },
+        { col: 5, colSpan: 4, row: 1, rowSpan: 1, kind: 'stat', content: '18%', title: '平台抽成与配送占比' },
+        { col: 9, colSpan: 4, row: 1, rowSpan: 1, kind: 'stat', content: '¥9.6', title: '一单毛利（演示口径）' },
+        { col: 1, colSpan: 8, row: 2, rowSpan: 3, kind: 'chart-bar', title: '6 周试跑的日均订单（单/天）', content: '', data: [{ label: '第 1 周', value: 8 }, { label: '第 2 周', value: 13 }, { label: '第 3 周', value: 18 }, { label: '第 4 周', value: 22 }, { label: '第 5 周', value: 25 }, { label: '第 6 周', value: 27 }] },
+        { col: 9, colSpan: 4, row: 2, rowSpan: 3, kind: 'text', title: '怎么读这组数字', content: '日均到 15 单，按单均毛利 ¥9.6 算，一周就能覆盖试跑的基本成本。到 25 单，就值得认真扩品。演示口径，正式用店内实测。', accent: true },
       ],
     },
     {
-      pageId: 'p5', index: 5, title: '三步走：辅助 → 接管 → 自治', kicker: '怎么落地', message: '渐进式路线让每一步都有数据验证，风险可控。', pageType: 'content', speakerNote: '每一步都是上一验证通过的产物，不存在跳跃。',
+      pageId: 'p5', index: 5, title: '试跑分三步走', kicker: '怎么先试跑', message: '每步有门槛，过了才加码，不过就停。', pageType: 'content', speakerNote: '每一步都只加一样东西，方便看出是哪一步带来变化。',
       cards: [
-        { col: 1, colSpan: 12, row: 1, rowSpan: 2, kind: 'timeline', content: ['Q3:自动草稿 + 人工审核', 'Q4:标准问题自动处理', 'H1:端到端 + 主动服务'], accent: true },
-        { col: 1, colSpan: 4, row: 3, rowSpan: 2, kind: 'bullets', title: 'Q3 · 辅助坐席', content: ['高频问题库 + 话术推荐', '人机协同评分上线'] },
-        { col: 5, colSpan: 4, row: 3, rowSpan: 2, kind: 'bullets', title: 'Q4 · 部分接管', content: ['一类业务全流程自动', '失败自动降级人工'] },
-        { col: 9, colSpan: 4, row: 3, rowSpan: 2, kind: 'bullets', title: 'H1 · 全自治闭环', content: ['主动触达与回访', '目标成本再降 20%'] },
+        { col: 1, colSpan: 12, row: 1, rowSpan: 2, kind: 'timeline', content: ['第 1 周 上 8 款常温面包', '第 3 周 加 11 点前自提', '第 5 周 试面包咖啡套餐'], accent: true },
+        { col: 1, colSpan: 4, row: 3, rowSpan: 2, kind: 'bullets', title: '第 1 到 2 周 · 只上常温', content: ['卖得最好的 8 款先上', '平台新人期观察单量'] },
+        { col: 5, colSpan: 4, row: 3, rowSpan: 2, kind: 'bullets', title: '第 3 到 4 周 · 加自提', content: ['11 点前下单、前台自提', '自提单免配送费'] },
+        { col: 9, colSpan: 4, row: 3, rowSpan: 2, kind: 'bullets', title: '第 5 到 6 周 · 试套餐', content: ['面包加挂耳咖啡共 3 款', '按毛利门槛决定留哪款'] },
       ],
     },
     {
-      pageId: 'p6', index: 6, title: '每一步都有准入门禁', kicker: '怎么落地', message: '不达标不升级，出问题一键回滚，风险被机制锁住。', pageType: 'content', speakerNote: '这是给管理层的定心丸：升级是数据驱动的。',
+      pageId: 'p6', index: 6, title: '退出的门槛先写好', kicker: '怎么先试跑', message: '什么算成功、什么算失败，开跑前就说死。', pageType: 'content', speakerNote: '给合伙人吃的定心丸，加码和叫停都是数据说了算。',
       cards: [
-        { col: 1, colSpan: 7, row: 1, rowSpan: 4, kind: 'bullets', title: '升级到下一步的门槛', content: ['试点场景任务完成率 ≥ 90%，连续 4 周', '人工修正率持续下降', '成本单均低于人工基线 30% 以上', '无 P0 事故，审计日志全量可回放'], accent: true },
-        { col: 8, colSpan: 5, row: 1, rowSpan: 2, kind: 'text', title: '风险与回滚', content: '灰度池隔离，一键切回人工；敏感场景白名单制。' },
-        { col: 8, colSpan: 5, row: 3, rowSpan: 2, kind: 'text', title: '度量口径', content: '成本按单均全成本核算；满意度用同卷 NPS 对比。' },
+        { col: 1, colSpan: 7, row: 1, rowSpan: 4, kind: 'bullets', title: '继续做下去的门槛', content: ['连续 2 周日均 ≥ 15 单', '单均毛利 ≥ ¥8', '打烊前处理的面包没变多', '差评 48 小时内处理完'], accent: true },
+        { col: 8, colSpan: 5, row: 1, rowSpan: 2, kind: 'text', title: '什么情况叫停', content: '两周单量没到 8 单，或单均毛利长期低于 ¥8，就关掉平台，回店里做熟客。' },
+        { col: 8, colSpan: 5, row: 3, rowSpan: 2, kind: 'text', title: '钱花在哪', content: '¥3000 预算主要是包装、平台保证金和 6 周的流量。花完这一轮，账也就清楚了。' },
       ],
     },
-    { pageId: 'p7', index: 7, title: '一线的声音', kicker: '来自试点', message: '上线 90 天，人工成本降了三成，客户满意度反而涨了 11 个点。', pageType: 'quote', speakerNote: '试点运营负责人（演示）', cards: [] },
-    { pageId: 'p8', index: 8, title: '建议：Q4 启动试点', kicker: '行动', message: '建议：Q4 启动试点', pageType: 'ending', speakerNote: '预算 ¥80 万 · 首批 2 个场景 · 90 天见效', cards: [{ col: 1, colSpan: 12, row: 1, rowSpan: 1, kind: 'highlight', content: '' }] },
+    { pageId: 'p7', index: 7, title: '业主群里一句话', kicker: '来自问卷', message: '早上送完孩子顺路来取，比跑店里快。', pageType: 'quote', speakerNote: '青枫苑业主 张女士（问卷原话）', cards: [] },
+    { pageId: 'p8', index: 8, title: '先跑 6 周再决定', kicker: '行动', message: '先跑 6 周再决定', pageType: 'ending', speakerNote: '预算 ¥3000 · 8 款常温面包 · 3 公里闪送 · 6 周复盘', cards: [{ col: 1, colSpan: 12, row: 1, rowSpan: 1, kind: 'highlight', content: '' }] },
   ]
-  // enrichPlan 需要 ratio；渲染器会按当前风格重算，这里给默认比例以满足类型
+  // enrichPlan needs a ratio; the renderer recomputes for the current style,
+  // so we only use 16:9 here to satisfy the type.
   return plans.map((p) => enrichPlan(p as PagePlan, '16:9'))
 }
 
 export function renderMockSlide(plan: PagePlan, style: SlideStyle, quoteAuthor?: string): string {
-  return renderSlide(plan, style, { index: plan.index, total: 8, topic: '智能助手落地路线', quoteAuthor })
+  return renderSlide(plan, style, { index: plan.index, total: 8, topic: MOCK_TOPIC, quoteAuthor })
 }
 
-/** Mock 的大纲整体重生成：演示用，把建议摘要附加到塔尖结论上以示生效 */
+// Demo outline regeneration: append the feedback to the core message so the
+// change is visible in the outline stage.
 export function mockOutlineRegen(feedback: string): Outline {
   const o: Outline = JSON.parse(JSON.stringify(mockOutline))
-  o.coreMessage = `${o.coreMessage}（已按建议调整：${feedback.slice(0, 24)}…）`
+  o.coreMessage = `${o.coreMessage}（已按建议调整，${feedback.slice(0, 24)}…）`
   return o
 }
 
-/** Mock 的单页重写：演示用，按建议做一个朴素但可见的修改 */
+// Demo single-page rewrite: apply a small but visible edit based on the advice.
 export function mockRewritePage(page: StickyPage, advice: string): StickyPage {
   const next: StickyPage = JSON.parse(JSON.stringify(page))
   const a = advice.trim()

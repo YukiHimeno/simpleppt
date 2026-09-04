@@ -3,7 +3,7 @@ import { Check, Palette, RotateCcw } from 'lucide-react'
 import { useApp } from '../lib/app-context'
 import { renderSlide } from '../lib/slide-renderer'
 import { sanitizeSvg } from '../lib/exporter'
-import { mockPlans } from '../lib/mock-data'
+import { MOCK_TOPIC, mockPlans } from '../lib/mock-data'
 import { Badge, Button, Field, Label, cn } from './ui'
 import { STYLE_PRESETS, isPlainStyle, type CanvasRatio, type SlideStyle } from 'shared/types'
 
@@ -18,7 +18,7 @@ const COLOR_FIELDS: { key: keyof SlideStyle; label: string }[] = [
   { key: 'cardAlt', label: '卡片次色' },
 ]
 
-/** 风格工坊：选择预设 + 细致调整每个令牌，实时预览同一份示例内容 */
+/** Style workshop: pick a preset, tweak every token, and preview the same sample content live. */
 export function StyleEditor({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { settings, setSettings } = useApp()
   const [draft, setDraft] = useState<SlideStyle>(settings.style)
@@ -35,8 +35,8 @@ export function StyleEditor({ open, onClose }: { open: boolean; onClose: () => v
     setDirty(true)
   }
 
-  const samplePlan = mockPlans()[3] // 数据页：包含 stat / chart / 结论，最能看出版式差异
-  const previewSvg = renderSlide(samplePlan, draft, { index: 4, total: 8, topic: '智能助手落地路线' })
+  const samplePlan = mockPlans()[3] // Data page: stat + chart + verdict, best for layout contrast.
+  const previewSvg = renderSlide(samplePlan, draft, { index: 4, total: 8, topic: MOCK_TOPIC })
 
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto bg-background">
@@ -70,7 +70,7 @@ export function StyleEditor({ open, onClose }: { open: boolean; onClose: () => v
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)]">
-          {/* 左：预设 + 令牌编辑 */}
+          {/* Left: presets + token editing */}
           <div className="space-y-5">
             <div className="space-y-2">
               <Label>风格预设</Label>
@@ -172,7 +172,7 @@ export function StyleEditor({ open, onClose }: { open: boolean; onClose: () => v
             </p>
           </div>
 
-          {/* 右：实时预览 */}
+          {/* Right: live preview */}
           <div className="space-y-3">
             <Label>实时预览（示例数据页）</Label>
             <div className="border border-border bg-card p-2 shadow-xl">
