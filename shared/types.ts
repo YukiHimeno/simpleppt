@@ -193,6 +193,15 @@ export function cloneStyle(s: SlideStyle): SlideStyle {
   return { ...s }
 }
 
+/**
+ * 是否为“朴素干货”气质。plain 是新加的字段，历史保存的风格里可能没有它；
+ * 对老数据（id 仍是 'plain'）按 id 兜底，避免朴素干货的椭圆标注、问号小人、
+ * 荧光笔与随机偏移全部消失。
+ */
+export function isPlainStyle(s: { id?: string; plain?: boolean }): boolean {
+  return s.plain === true || (s.id === 'plain' && s.plain !== false)
+}
+
 export interface ChartDatum {
   label: string
   value: number

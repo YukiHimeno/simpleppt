@@ -5,7 +5,7 @@ import { renderSlide } from '../lib/slide-renderer'
 import { sanitizeSvg } from '../lib/exporter'
 import { mockPlans } from '../lib/mock-data'
 import { Badge, Button, Field, Label, cn } from './ui'
-import { STYLE_PRESETS, type CanvasRatio, type SlideStyle } from 'shared/types'
+import { STYLE_PRESETS, isPlainStyle, type CanvasRatio, type SlideStyle } from 'shared/types'
 
 const COLOR_FIELDS: { key: keyof SlideStyle; label: string }[] = [
   { key: 'bg', label: '背景' },
@@ -45,7 +45,7 @@ export function StyleEditor({ open, onClose }: { open: boolean; onClose: () => v
           <div className="flex items-center gap-2">
             <Palette className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-bold tracking-tight">风格工坊</h1>
-            <Badge tone="outline">{draft.plain ? '朴素干货' : draft.carded ? 'Bento Grid' : '无卡片版式'} · {draft.ratio}</Badge>
+            <Badge tone="outline">{isPlainStyle(draft) ? '朴素干货' : draft.carded ? 'Bento Grid' : '无卡片版式'} · {draft.ratio}</Badge>
           </div>
           <div className="flex gap-2">
             <Button
