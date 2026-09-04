@@ -97,6 +97,8 @@ export interface TextLine {
   /** 文字描边（Office 艺术字的轮廓色/宽度） */
   stroke?: string
   strokeWidth?: number
+  /** PPT text-run highlighter color (6-hex) when this line has a backing highlight rect */
+  highlight?: string
 }
 
 export interface ImageRef {
@@ -593,6 +595,47 @@ function clusterTextLines(texts: TextLine[]): TextLine[][] {
   return blocks
 }
 
+/**
+ * Convert small translucent backing rects behind text into PPT text-run
+ * highlights. The plain/dry style draws a highlighter as a <rect> behind the
+ * glyphs; exporting it as a shape would put a separate box under the text, so
+ * we turn it into real PowerPoint highlighting and drop the rect shape.
+ */
+function markTextHighlights(texts: TextLine[], shapes: NativeShape[]): NativeShape[] {
+  const backingRects = shapes.filter((s) => (s.kind === 'rect' || s.kind === 'roundRect') && !!s.fill)
+  const used = new Set<NativeShape>()
+  for (const t of texts) {
+    if (t.highlight) continue
+    const w = Math.max(8, textWidthPx(t.text, t.size, t.letterSpacing ?? 0))
+    const left = t.anchor === 'end' ? t.x - w : t.x
+    const right = left + w
+    const top = t.y - t.size * 1.05
+    const bottom = t.y + t.size * 0.3
+    let best: NativeShape | null = null
+    let bestArea = 0
+    for (const r of backingRects) {
+      if (!r.fill || used.has(r)) continue
+      // Highlight backing rects are translucent and roughly one line tall.
+      if (!r.fillTransparency) continue
+      if (r.h < t.size * 0.7 || r.h > t.size * 2.1) continue
+      const x1 = Math.max(left, r.x)
+      const x2 = Math.min(right, r.x + r.w)
+      const y1 = Math.max(top, r.y)
+      const y2 = Math.min(bottom, r.y + r.h)
+      const area = Math.max(0, x2 - x1) * Math.max(0, y2 - y1)
+      if (area > bestArea) {
+        bestArea = area
+        best = r
+      }
+    }
+    if (best && bestArea > t.size * t.size * 0.2) {
+      t.highlight = best.fill
+      used.add(best)
+    }
+  }
+  return shapes.filter((s) => !used.has(s))
+}
+
 /** 朴素干货风格使用等线，其他风格使用 PingFang SC */
 function fontFamily(style: SlideStyle): string {
   return isPlainStyle(style) ? '等线' : 'PingFang SC'
@@ -645,9 +688,12 @@ export async function exportNativePptx(
     const svg = await preprocessComplexShapes(rawSvg)
 
     const { texts, shapes, images } = parseSvg(svg)
+    // Turn per-line translucent backing rects into text-run highlights and
+    // remove the rects from the native-shape layer.
+    const shapesForExport = markTextHighlights(texts, shapes)
 
     // 基础形状（先画，文本叠在上层）
-    for (const sh of shapes) {
+    for (const sh of shapesForExport) {
       if (sh.kind === 'rect') {
         s.addShape('rect', {
           x: toIn(sh.x),
@@ -712,6 +758,9 @@ export async function exportNativePptx(
     for (const block of clusterTextLines(texts)) {
       const t = block[0]
       const multi = block.length > 1
+      // Apply the real text highlight only when the whole block is backed by
+      // the same translucent rect; otherwise keep the shape fallback.
+      const hl = block.length > 0 && block.every((ln) => ln.highlight === block[0].highlight) && !!block[0].highlight ? block[0].highlight : undefined
       // fill="none" 是艺术字镂空层：PPT 文本框没有“无填充文字”，
       // 用幻灯片背景色当文字色 + 描边，才能得到“镂空字”效果，而不是默认的黑字。
       const isHollow = t.fill.trim() === 'none'
@@ -751,6 +800,7 @@ export async function exportNativePptx(
       if (CJK.test(whole)) baseOpts.lang = 'zh-CN'
       if (ls) baseOpts.charSpacing = pxToPt(ls)
       if (fillColor?.transparency) baseOpts.transparency = fillColor.transparency
+      if (hl) baseOpts.highlight = hl
       s.addText(whole, {
         ...baseOpts,
       })
