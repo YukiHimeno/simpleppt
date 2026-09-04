@@ -5,19 +5,15 @@
 //   <rect>          → 矩形形状（纯实心色）
 //   <circle>        → 椭圆形状（实心或仅描边）
 //   <ellipse>       → 椭圆形状（实心或仅描边）
-//   <line>          → 水平/垂直→细矩形；斜线→ line 形状
+//   <line>          → 水平/垂直→细矩形；斜线→ line 形状（带方向修正）
 //   <text>/<tspan>  → 原生文本框（可编辑文字）
 //   <svg>（内嵌）   → MathJax 公式，光栅化为 PNG 嵌入图片
 //   <image>         → 嵌入图片（问号小人等 data URL）
-// 半透明的 rgba 填充（本应用里主要是卡片描边/浅色调）不还原，保证形状干净可选。
+// 颜色/透明度按 SVG 原样还原：rgba 的 alpha 与 opacity 属性会映射为 PPT 的
+// transparency，避免把半透明色硬写成实心色。
 import PptxGenJS from 'pptxgenjs'
 import type { CanvasRatio, SlideStyle } from 'shared/types'
 import { RATIO_SIZE } from './exporter'
-
-/** SVG 像素 → 英寸：pptxgenjs 的 x/y/w/h 以英寸为单位，96dpi 下 1px = 1/96in */
-function pxToIn(px: number): number {
-  return px / 96
-}
 
 /** SVG 字号(px) → pptx 字号(pt)：1px = 0.75pt */
 function pxToPt(px: number): number {
@@ -26,10 +22,10 @@ function pxToPt(px: number): number {
 
 const CJK = /[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFF60\u3000-\u303F]/
 
-/** 用与渲染器一致的启发式估算一行文本的渲染宽度（px） */
-function textWidthPx(s: string, sizePx: number): number {
+/** 用与渲染器一致的启发式估算一行文本的渲染宽度（px），letterSpacing 为 SVG 的 letter-spacing(px) */
+function textWidthPx(s: string, sizePx: number, letterSpacing = 0): number {
   let w = 0
-  for (const ch of s) w += CJK.test(ch) ? sizePx : sizePx * 0.52
+  for (const ch of s) w += (CJK.test(ch) ? sizePx : sizePx * 0.52) + letterSpacing
   return w
 }
 
@@ -38,7 +34,7 @@ function num(attr: string | null, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback
 }
 
-/** 只认纯十六进制色（6 位或 3 位），其它格式（rgb/rgba/名字）返回空 → 由调用方决定保留/丢弃 */
+/** 只认纯十六进制色（6 位或 3 位），其它格式（rgb/rgba/名字）返回空 */
 function hexOf(fill: string): string {
   let c = (fill ?? '').trim()
   const rgb = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i)
@@ -46,6 +42,44 @@ function hexOf(fill: string): string {
   if (c.startsWith('#')) c = c.slice(1)
   if (/^[0-9a-fA-F]{3}$/.test(c)) c = c.split('').map((x) => x + x).join('')
   return /^[0-9a-fA-F]{6}$/.test(c) ? c : ''
+}
+
+/** 解析后的颜色：6 位十六进制 + 可选的透明度百分比（0-100，0=完全不透明） */
+interface RgbaColor {
+  color: string
+  transparency?: number
+}
+
+/**
+ * 把 SVG 颜色属性（#hex / rgb / rgba）解析为 PPT 可用的 6 位色。
+ * alpha 通道不会塞进色值（pptxgenjs 不接受 8 位十六进制），而是转成 transparency。
+ * 元素自身的 opacity 属性会与 rgba alpha 叠加。
+ */
+function parseColorAttr(attr: string | null, elOpacity = 1): RgbaColor | null {
+  const raw = (attr ?? '').trim()
+  if (!raw || raw === 'none' || raw === 'transparent') return null
+  let alpha = Math.min(1, Math.max(0, Number.isFinite(elOpacity) ? elOpacity : 1))
+  let color: string
+  const m = raw.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([0-9.]+))?\s*\)/i)
+  if (m) {
+    const r = Math.min(255, parseInt(m[1], 10))
+    const g = Math.min(255, parseInt(m[2], 10))
+    const b = Math.min(255, parseInt(m[3], 10))
+    color = [r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('')
+    if (m[4] != null) alpha *= Math.min(1, Math.max(0, parseFloat(m[4]) || 0))
+  } else {
+    const hex = hexOf(raw)
+    if (!hex) return null
+    color = hex
+  }
+  if (alpha <= 0.005) return null
+  return { color, ...(alpha < 0.995 ? { transparency: Math.round((1 - alpha) * 100) } : {}) }
+}
+
+/** 元素透明度（0-1），用于把 opacity 属性并入 fill/line */
+function elementOpacity(el: Element): number {
+  const o = parseFloat(el.getAttribute('opacity') ?? '')
+  return Number.isFinite(o) ? o : 1
 }
 
 export interface TextLine {
@@ -56,6 +90,10 @@ export interface TextLine {
   fill: string
   bold: boolean
   anchor: 'start' | 'middle' | 'end'
+  /** SVG letter-spacing(px)，映射为 PPT 字符间距 */
+  letterSpacing?: number
+  /** 元素透明度(0-1)，<1 时映射为文字 transparency */
+  opacity?: number
   /** 文字描边（Office 艺术字的轮廓色/宽度） */
   stroke?: string
   strokeWidth?: number
@@ -75,12 +113,18 @@ export interface NativeShape {
   y: number
   w: number
   h: number
+  /** 6 位填充色 */
   fill?: string
-  line?: string
+  /** 填充透明度百分比 0-100（由 rgba alpha / opacity 折算） */
+  fillTransparency?: number
+  /** 描边（color 为 6 位色；width 单位 pt；transparency 0-100） */
+  line?: { color: string; width: number; transparency?: number }
   /** polygon 时：pptxgenjs 原生形状名（triangle/diamond/pentagon/…） */
   shapeName?: string
   /** roundRect 的圆角半径(px) */
   rx?: number
+  /** 斜线是否需要翻转（SVG 从右上到左下等方向，PowerPoint line 默认左上→右下） */
+  flipV?: boolean
 }
 
 /**
@@ -310,7 +354,10 @@ export function parseSvg(svg: string): { texts: TextLine[]; shapes: NativeShape[
     const anchor = (el.getAttribute('text-anchor') ?? 'start') as 'start' | 'middle' | 'end'
     const stroke = el.getAttribute('stroke') ?? ''
     const strokeWidth = num(el.getAttribute('stroke-width'))
+    const opacity = elementOpacity(el)
+    const letterSpacing = num(el.getAttribute('letter-spacing'))
     const tspans = Array.from(el.querySelectorAll('tspan'))
+    const base = { size, fill, bold, anchor, stroke, strokeWidth, opacity, letterSpacing }
 
     if (tspans.length > 0) {
       let ly = baseY
@@ -321,15 +368,17 @@ export function parseSvg(svg: string): { texts: TextLine[]; shapes: NativeShape[
         const dyAttr = ts.getAttribute('dy')
         if (dyAttr !== null) ly += num(dyAttr, 0)
         const txt = ts.textContent ?? ''
-        if (txt.trim()) texts.push({ x: lx, y: ly, text: txt, size, fill, bold, anchor, stroke, strokeWidth })
+        if (txt.trim()) texts.push({ x: lx, y: ly, text: txt, ...base })
       }
     } else {
       const txt = el.textContent ?? ''
-      if (txt.trim()) texts.push({ x: baseX, y: baseY, text: txt, size, fill, bold, anchor, stroke, strokeWidth })
+      if (txt.trim()) texts.push({ x: baseX, y: baseY, text: txt, ...base })
     }
   }
 
   // ── 基础形状（只取顶层 <rect>/<circle>/<ellipse>/<line>） ──
+  // 颜色统一走 parseColorAttr：rgba alpha 与 opacity 都会折算成 PPT 的 transparency，
+  // 不再出现「半透明描边被硬写成实心色」的失真。
   for (const r of Array.from(root.querySelectorAll('rect'))) {
     if (!isTopLevel(r, root)) continue
     const x = num(r.getAttribute('x'))
@@ -337,10 +386,15 @@ export function parseSvg(svg: string): { texts: TextLine[]; shapes: NativeShape[
     const w = num(r.getAttribute('width'))
     const h = num(r.getAttribute('height'))
     const rx = num(r.getAttribute('rx'))
-    const fill = hexOf(r.getAttribute('fill') ?? '')
-    if ((!fill && !hexOf(r.getAttribute('stroke') ?? '')) || w <= 0.5 || h <= 0.5) continue
+    const op = elementOpacity(r)
+    const fill = parseColorAttr(r.getAttribute('fill'), op)
+    const stroke = parseColorAttr(r.getAttribute('stroke'), op)
+    if ((!fill && !stroke) || w <= 0.5 || h <= 0.5) continue
+    const sw = num(r.getAttribute('stroke-width'), 1)
+    const line = stroke ? { color: stroke.color, width: Math.max(0.25, sw * 0.75), ...(stroke.transparency ? { transparency: stroke.transparency } : {}) } : undefined
     // rx>0 → 圆角矩形（卡片/荧光笔/柱状条都是圆角）
-    shapes.push(rx > 0.5 ? { kind: 'roundRect', x, y, w, h, rx: Math.min(rx, w / 2, h / 2), fill: fill || undefined } : { kind: 'rect', x, y, w, h, fill: fill || undefined })
+    const base = { x, y, w, h, fill: fill?.color, ...(fill?.transparency ? { fillTransparency: fill.transparency } : {}), line }
+    shapes.push(rx > 0.5 ? { kind: 'roundRect', ...base, rx: Math.min(rx, w / 2, h / 2) } : { kind: 'rect', ...base })
   }
 
   for (const c of Array.from(root.querySelectorAll('circle'))) {
@@ -348,8 +402,10 @@ export function parseSvg(svg: string): { texts: TextLine[]; shapes: NativeShape[
     const cx = num(c.getAttribute('cx'))
     const cy = num(c.getAttribute('cy'))
     const r = num(c.getAttribute('r'))
-    const fill = hexOf(c.getAttribute('fill') ?? '')
-    const stroke = hexOf(c.getAttribute('stroke') ?? '')
+    const op = elementOpacity(c)
+    const fill = parseColorAttr(c.getAttribute('fill'), op)
+    const stroke = parseColorAttr(c.getAttribute('stroke'), op)
+    const sw = num(c.getAttribute('stroke-width'), 1)
     if (r <= 0.5) continue
     shapes.push({
       kind: 'ellipse',
@@ -357,8 +413,9 @@ export function parseSvg(svg: string): { texts: TextLine[]; shapes: NativeShape[
       y: cy - r,
       w: r * 2,
       h: r * 2,
-      fill: fill || undefined,
-      line: stroke || undefined,
+      fill: fill?.color,
+      ...(fill?.transparency ? { fillTransparency: fill.transparency } : {}),
+      ...(stroke ? { line: { color: stroke.color, width: Math.max(0.25, sw * 0.75), ...(stroke.transparency ? { transparency: stroke.transparency } : {}) } } : {}),
     })
   }
 
@@ -370,22 +427,20 @@ export function parseSvg(svg: string): { texts: TextLine[]; shapes: NativeShape[
     const rx = num(el.getAttribute('rx'))
     const ry = num(el.getAttribute('ry'))
     if (rx <= 0.5 || ry <= 0.5) continue
-    const fill = hexOf(el.getAttribute('fill') ?? '')
-    const stroke = hexOf(el.getAttribute('stroke') ?? '')
-    const strokeWidth = num(el.getAttribute('stroke-width'), 1)
+    const op = elementOpacity(el)
+    const fill = parseColorAttr(el.getAttribute('fill'), op)
+    const stroke = parseColorAttr(el.getAttribute('stroke'), op)
+    const sw = num(el.getAttribute('stroke-width'), 1)
     shapes.push({
       kind: 'ellipse',
       x: cx - rx,
       y: cy - ry,
       w: rx * 2,
       h: ry * 2,
-      fill: fill || undefined,
-      line: stroke || undefined,
+      fill: fill?.color,
+      ...(fill?.transparency ? { fillTransparency: fill.transparency } : {}),
+      ...(stroke ? { line: { color: stroke.color, width: Math.max(0.25, sw * 0.75), ...(stroke.transparency ? { transparency: stroke.transparency } : {}) } } : {}),
     })
-    if (stroke && strokeWidth > 1) {
-      const last = shapes[shapes.length - 1]
-      last.line = `${stroke};${(strokeWidth * 0.75).toFixed(1)}`
-    }
   }
 
   for (const ln of Array.from(root.querySelectorAll('line'))) {
@@ -394,14 +449,25 @@ export function parseSvg(svg: string): { texts: TextLine[]; shapes: NativeShape[
     const y1 = num(ln.getAttribute('y1'))
     const x2 = num(ln.getAttribute('x2'))
     const y2 = num(ln.getAttribute('y2'))
-    const stroke = hexOf(ln.getAttribute('stroke') ?? '')
+    const op = elementOpacity(ln)
+    const stroke = parseColorAttr(ln.getAttribute('stroke'), op)
     if (!stroke) continue
+    const sw = Math.max(0.5, num(ln.getAttribute('stroke-width'), 1.5))
     if (Math.abs(y2 - y1) < 0.5) {
-      shapes.push({ kind: 'rect', x: Math.min(x1, x2), y: y1, w: Math.abs(x2 - x1), h: Math.max(0.5, num(ln.getAttribute('stroke-width'), 1.5)), fill: stroke })
+      shapes.push({ kind: 'rect', x: Math.min(x1, x2), y: y1, w: Math.abs(x2 - x1), h: sw, fill: stroke.color, ...(stroke.transparency ? { fillTransparency: stroke.transparency } : {}) })
     } else if (Math.abs(x2 - x1) < 0.5) {
-      shapes.push({ kind: 'rect', x: x1, y: Math.min(y1, y2), w: Math.max(0.5, num(ln.getAttribute('stroke-width'), 1.5)), h: Math.abs(y2 - y1), fill: stroke })
+      shapes.push({ kind: 'rect', x: x1, y: Math.min(y1, y2), w: sw, h: Math.abs(y2 - y1), fill: stroke.color, ...(stroke.transparency ? { fillTransparency: stroke.transparency } : {}) })
     } else {
-      shapes.push({ kind: 'line', x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1), line: stroke })
+      shapes.push({
+        kind: 'line',
+        x: Math.min(x1, x2),
+        y: Math.min(y1, y2),
+        w: Math.abs(x2 - x1),
+        h: Math.abs(y2 - y1),
+        line: { color: stroke.color, width: sw * 0.75, ...(stroke.transparency ? { transparency: stroke.transparency } : {}) },
+        // PowerPoint 的 line 形状默认左上→右下；反方向斜线要翻转
+        flipV: (x2 - x1) * (y2 - y1) < 0,
+      })
     }
   }
 
@@ -413,9 +479,21 @@ export function parseSvg(svg: string): { texts: TextLine[]; shapes: NativeShape[
     if (!shapeName) continue
     const bb = bboxOf(pts)
     if (!bb) continue
-    const fill = hexOf(pg.getAttribute('fill') ?? '')
-    const stroke = hexOf(pg.getAttribute('stroke') ?? '')
-    shapes.push({ kind: 'polygon', shapeName, x: bb.minX, y: bb.minY, w: bb.w, h: bb.h, fill: fill || undefined, line: stroke || undefined })
+    const op = elementOpacity(pg)
+    const fill = parseColorAttr(pg.getAttribute('fill'), op)
+    const stroke = parseColorAttr(pg.getAttribute('stroke'), op)
+    const sw = num(pg.getAttribute('stroke-width'), 1)
+    shapes.push({
+      kind: 'polygon',
+      shapeName,
+      x: bb.minX,
+      y: bb.minY,
+      w: bb.w,
+      h: bb.h,
+      fill: fill?.color,
+      ...(fill?.transparency ? { fillTransparency: fill.transparency } : {}),
+      ...(stroke ? { line: { color: stroke.color, width: Math.max(0.25, sw * 0.75), ...(stroke.transparency ? { transparency: stroke.transparency } : {}) } } : {}),
+    })
   }
 
   // <polyline>（2 点 → 线；更复杂的已由 preprocess 光栅化）
@@ -423,15 +501,25 @@ export function parseSvg(svg: string): { texts: TextLine[]; shapes: NativeShape[
     if (!isTopLevel(pl, root)) continue
     const pts = parsePoints(pl.getAttribute('points'))
     if (pts.length !== 2) continue
-    const stroke = hexOf(pl.getAttribute('stroke') ?? '')
+    const op = elementOpacity(pl)
+    const stroke = parseColorAttr(pl.getAttribute('stroke'), op)
     if (!stroke) continue
     const x1 = pts[0].x, y1 = pts[0].y, x2 = pts[1].x, y2 = pts[1].y
+    const sw = Math.max(0.5, num(pl.getAttribute('stroke-width'), 1.5))
     if (Math.abs(y2 - y1) < 0.5) {
-      shapes.push({ kind: 'rect', x: Math.min(x1, x2), y: y1, w: Math.abs(x2 - x1), h: Math.max(0.5, num(pl.getAttribute('stroke-width'), 1.5)), fill: stroke })
+      shapes.push({ kind: 'rect', x: Math.min(x1, x2), y: y1, w: Math.abs(x2 - x1), h: sw, fill: stroke.color, ...(stroke.transparency ? { fillTransparency: stroke.transparency } : {}) })
     } else if (Math.abs(x2 - x1) < 0.5) {
-      shapes.push({ kind: 'rect', x: x1, y: Math.min(y1, y2), w: Math.max(0.5, num(pl.getAttribute('stroke-width'), 1.5)), h: Math.abs(y2 - y1), fill: stroke })
+      shapes.push({ kind: 'rect', x: x1, y: Math.min(y1, y2), w: sw, h: Math.abs(y2 - y1), fill: stroke.color, ...(stroke.transparency ? { fillTransparency: stroke.transparency } : {}) })
     } else {
-      shapes.push({ kind: 'line', x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1), line: stroke })
+      shapes.push({
+        kind: 'line',
+        x: Math.min(x1, x2),
+        y: Math.min(y1, y2),
+        w: Math.abs(x2 - x1),
+        h: Math.abs(y2 - y1),
+        line: { color: stroke.color, width: sw * 0.75, ...(stroke.transparency ? { transparency: stroke.transparency } : {}) },
+        flipV: (x2 - x1) * (y2 - y1) < 0,
+      })
     }
   }
 
@@ -456,6 +544,18 @@ function fontFamily(style: SlideStyle): string {
   return style.carded ? 'PingFang SC' : '等线'
 }
 
+/** 把 NativeShape 的填充转成 pptxgenjs fill（含透明度；无填充时显式 noFill 风格对象） */
+function shapeFill(sh: NativeShape): { type: 'none' } | { color: string; transparency?: number } {
+  if (!sh.fill) return { type: 'none' }
+  return sh.fillTransparency ? { color: sh.fill, transparency: sh.fillTransparency } : { color: sh.fill }
+}
+
+/** 把 NativeShape 的描边转成 pptxgenjs line；无描边时给出 "none" */
+function shapeLine(sh: NativeShape): { type: 'none' } | { color: string; width: number; transparency?: number } {
+  if (!sh.line) return { type: 'none' }
+  return { color: sh.line.color, width: sh.line.width, ...(sh.line.transparency ? { transparency: sh.line.transparency } : {}) }
+}
+
 /** 导出纯基础形状 PPTX（无位图底） */
 export async function exportNativePptx(
   slides: { svg: string; note?: string }[],
@@ -474,6 +574,10 @@ export async function exportNativePptx(
   pptx.author = 'SimplePPT'
 
   const font = fontFamily(style)
+  // SVG 像素 → 英寸：pptxgenjs 的 x/y/w/h 以英寸为单位。
+  // 不能按 96dpi 硬除：4:3 画布是 1024×768px 但幻灯片是 10×7.5in，
+  // 只有按“英寸/画布宽”换算才不会把元素放得偏大并裁出画布。
+  const toIn = (px: number) => (px * size.inches.w) / size.w
 
   for (let i = 0; i < slides.length; i++) {
     onProgress?.(i, slides.length)
@@ -492,88 +596,74 @@ export async function exportNativePptx(
     for (const sh of shapes) {
       if (sh.kind === 'rect') {
         s.addShape('rect', {
-          x: pxToIn(sh.x),
-          y: pxToIn(sh.y),
-          w: pxToIn(sh.w),
-          h: pxToIn(sh.h),
-          fill: sh.fill ? { color: sh.fill } : { type: 'none' },
-          line: { type: 'none' },
+          x: toIn(sh.x),
+          y: toIn(sh.y),
+          w: toIn(sh.w),
+          h: toIn(sh.h),
+          fill: shapeFill(sh),
+          line: shapeLine(sh),
         })
       } else if (sh.kind === 'roundRect') {
         s.addShape('roundRect', {
-          x: pxToIn(sh.x),
-          y: pxToIn(sh.y),
-          w: pxToIn(sh.w),
-          h: pxToIn(sh.h),
-          rectRadius: pxToIn(sh.rx ?? 0),
-          fill: sh.fill ? { color: sh.fill } : { type: 'none' },
-          line: { type: 'none' },
+          x: toIn(sh.x),
+          y: toIn(sh.y),
+          w: toIn(sh.w),
+          h: toIn(sh.h),
+          rectRadius: toIn(sh.rx ?? 0),
+          fill: shapeFill(sh),
+          line: shapeLine(sh),
         })
       } else if (sh.kind === 'polygon') {
-        // line 属性格式同 ellipse："color;widthPt" 或纯 color
-        let lineColor = ''
-        let lineW = 1
-        if (sh.line) {
-          const parts = sh.line.split(';')
-          lineColor = parts[0]
-          if (parts[1]) lineW = parseFloat(parts[1]) || 1
-        }
         s.addShape(sh.shapeName as any, {
-          x: pxToIn(sh.x),
-          y: pxToIn(sh.y),
-          w: pxToIn(sh.w),
-          h: pxToIn(sh.h),
-          fill: sh.fill ? { color: sh.fill } : { type: 'none' },
-          line: lineColor ? { color: lineColor, width: lineW } : { type: 'none' },
+          x: toIn(sh.x),
+          y: toIn(sh.y),
+          w: toIn(sh.w),
+          h: toIn(sh.h),
+          fill: shapeFill(sh),
+          line: shapeLine(sh),
         })
       } else if (sh.kind === 'ellipse') {
-        // 解析 line 属性（格式: "color;widthPt" 或纯 color）
-        let lineColor = ''
-        let lineW = 1
-        if (sh.line) {
-          const parts = sh.line.split(';')
-          lineColor = parts[0]
-          if (parts[1]) lineW = parseFloat(parts[1]) || 1
-        }
         s.addShape('ellipse', {
-          x: pxToIn(sh.x),
-          y: pxToIn(sh.y),
-          w: pxToIn(sh.w),
-          h: pxToIn(sh.h),
-          fill: sh.fill ? { color: sh.fill } : { type: 'none' },
-          line: lineColor ? { color: lineColor, width: lineW } : { type: 'none' },
+          x: toIn(sh.x),
+          y: toIn(sh.y),
+          w: toIn(sh.w),
+          h: toIn(sh.h),
+          fill: shapeFill(sh),
+          line: shapeLine(sh),
         })
       } else {
         s.addShape('line', {
-          x: pxToIn(sh.x),
-          y: pxToIn(sh.y),
-          w: pxToIn(sh.w),
-          h: pxToIn(sh.h),
-          line: { color: sh.line ?? '000000', width: 1 },
+          x: toIn(sh.x),
+          y: toIn(sh.y),
+          w: toIn(sh.w),
+          h: toIn(sh.h),
+          line: sh.line ? shapeLine(sh) : { color: '000000', width: 1 },
+          flipV: sh.flipV,
         })
       }
     }
 
     // 位图（问号小人 + MathJax 公式光栅化后等内嵌 data URL 图片）
+    // pptxgenjs 的 addImage({data}) 只认带 "base64," 头的位图 data URL；
+    // 远程 URL / 非 base64 的 SVG data URL 会静默失败，这里先过滤掉。
     for (const im of images) {
-      s.addImage({ data: im.href, x: pxToIn(im.x), y: pxToIn(im.y), w: pxToIn(im.w), h: pxToIn(im.h) })
+      if (!/base64,/i.test(im.href)) {
+        console.warn('[SimplePPT export] 跳过不支持的图片（非 base64 data URL）：', im.href.slice(0, 60))
+        continue
+      }
+      s.addImage({ data: im.href, x: toIn(im.x), y: toIn(im.y), w: toIn(im.w), h: toIn(im.h) })
     }
 
     // 文本框
     for (const t of texts) {
-      const wpx = Math.max(8, textWidthPx(t.text, t.size))
-      const hIn = pxToIn(t.size * 1.25)
-      const topIn = pxToIn(t.y - t.size * 0.82)
-      let xpx = t.x
-      if (t.anchor === 'middle') xpx = t.x - wpx / 2
-      else if (t.anchor === 'end') xpx = t.x - wpx
-      const color = hexOf(t.fill)
+      // fill="none" 是艺术字镂空层：PPT 文本框没有“无填充文字”，
+      // 用幻灯片背景色当文字色 + 描边，才能得到“镂空字”效果，而不是默认的黑字。
+      const isHollow = t.fill.trim() === 'none'
+      // rgba 的 alpha 与元素 opacity 一并折算成文字 transparency（0-100，0=不透明）
+      const fillColor = isHollow ? null : parseColorAttr(t.fill, t.opacity ?? 1)
+      const color = isHollow ? (bgFill ?? 'FFFFFF') : fillColor?.color
       const strokeColor = t.stroke ? hexOf(t.stroke) : ''
-      s.addText(t.text, {
-        x: pxToIn(xpx),
-        y: topIn,
-        w: pxToIn(wpx),
-        h: hIn,
+      const baseOpts: Record<string, unknown> = {
         fontSize: pxToPt(t.size),
         fontFace: font,
         color: color || undefined,
@@ -581,9 +671,32 @@ export async function exportNativePptx(
         bold: t.bold,
         align: t.anchor === 'middle' ? 'center' : t.anchor === 'end' ? 'right' : 'left',
         valign: 'middle',
-        margin: 0,
+        // margin 必须是数组：pptxgenjs 里数字 0 会被当作“未设置”，文本框会退回 PPT 默认内边距
+        margin: [0, 0, 0, 0] as [number, number, number, number],
+        // SVG 里每行文字已经单独成行，禁止二次自动换行，避免估算宽度偏窄时被拆行溢出
+        wrap: false,
         isTextBox: true,
-      })
+      }
+      if (CJK.test(t.text)) baseOpts.lang = 'zh-CN'
+      if (t.letterSpacing) baseOpts.charSpacing = pxToPt(t.letterSpacing)
+      if (fillColor?.transparency) baseOpts.transparency = fillColor.transparency
+      // 一个 <text> 内含多行（\n）时逐行拆成独立文本框，避免被塞进单个矮文本框造成错位
+      const lines = t.text.split(/\r?\n/)
+      for (let li = 0; li < lines.length; li++) {
+        const line = lines[li]
+        if (!line.trim()) continue
+        const wpx = Math.max(8, textWidthPx(line, t.size, t.letterSpacing ?? 0))
+        let xpx = t.x
+        if (t.anchor === 'middle') xpx = t.x - wpx / 2
+        else if (t.anchor === 'end') xpx = t.x - wpx
+        s.addText(line, {
+          ...baseOpts,
+          x: toIn(xpx),
+          y: toIn(t.y - t.size * 0.82 + li * t.size * 1.25),
+          w: toIn(wpx),
+          h: toIn(t.size * 1.25),
+        })
+      }
     }
 
     if (note) s.addNotes(note)
