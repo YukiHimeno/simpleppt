@@ -45,7 +45,7 @@ export function StyleEditor({ open, onClose }: { open: boolean; onClose: () => v
           <div className="flex items-center gap-2">
             <Palette className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-bold tracking-tight">风格工坊</h1>
-            <Badge tone="outline">{draft.carded ? 'Bento Grid' : '朴素干货'} · {draft.ratio}</Badge>
+            <Badge tone="outline">{draft.plain ? '朴素干货' : draft.carded ? 'Bento Grid' : '无卡片版式'} · {draft.ratio}</Badge>
           </div>
           <div className="flex gap-2">
             <Button
@@ -90,7 +90,7 @@ export function StyleEditor({ open, onClose }: { open: boolean; onClose: () => v
                       <span className="inline-block h-3 w-3" style={{ background: p.highlight }} />
                     </div>
                     <div className="mt-2 text-sm font-medium">{p.name}</div>
-                    <div className="text-xs text-muted-foreground">{p.carded ? '卡片网格 · 留白层次' : '白底黑字 · 标红与荧光笔'}</div>
+                    <div className="text-xs text-muted-foreground">{p.plain ? '白底黑字 · 标红与荧光笔' : p.carded ? '卡片网格 · 留白层次' : '无卡片 · 直接排版'}</div>
                   </button>
                 ))}
               </div>
@@ -147,7 +147,7 @@ export function StyleEditor({ open, onClose }: { open: boolean; onClose: () => v
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-sm">Bento 卡片版式</div>
-                  <p className="text-xs text-muted-foreground">关闭后为朴素干货版式：无卡片底色，重点标红加粗或黄色荧光笔。</p>
+                  <p className="text-xs text-muted-foreground">关闭后只去掉卡片底色与圆角容器，字体配色与排版气质保持不变（不会变成朴素干货）。</p>
                 </div>
                 <button
                   onClick={() => set('carded', !draft.carded)}

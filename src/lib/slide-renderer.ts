@@ -153,11 +153,14 @@ function tightenLayout(base: BentoLayout): BentoLayout {
 
 export function renderSlide(plan: PagePlan, style: SlideStyle, ctx: RenderCtx): string {
   const base = getLayout(style.ratio)
-  const l = style.carded ? base : tightenLayout(base)
+  // carded 只决定是否画卡片底；朴素干货的手写讲义气质由 plain 单独控制，
+  // 关掉 Bento 卡片不会误触发朴素干货版式。
+  const plain = style.plain === true
+  const l = plain ? tightenLayout(base) : base
   const rects = plan.cards.map((c) => {
     const r = { ...c, ...gridRect(l, c.col, c.colSpan, c.row, c.rowSpan) }
     // 朴素干货没有卡片视觉：把网格间隔让给文字，不同区块的文字自然靠近
-    if (!style.carded) {
+    if (plain) {
       const g = Math.round(l.GAP / 2)
       r.x = Math.max(0, r.x - g)
       r.y = Math.max(0, r.y - g)
@@ -171,11 +174,11 @@ export function renderSlide(plan: PagePlan, style: SlideStyle, ctx: RenderCtx): 
   const isChrome = plan.pageType !== 'cover' && plan.pageType !== 'quote' && plan.pageType !== 'ending'
   if (isChrome && plan.kicker) parts.push(T(l.PAD, l.KICKER_Y, 12, plan.kicker, { fill: style.accent, weight: 600, ls: 2 }))
   if (isChrome) {
-    if (style.carded) {
-      parts.push(T(l.PAD, l.TITLE_Y, l.TITLE_SIZE, plan.title, { fill: style.fg, weight: 700 }))
-    } else {
+    if (plain) {
       parts.push(wordArt(l.PAD, l.TITLE_Y, l.TITLE_SIZE, plan.title, 5))
       parts.push(questionPerson(l.W - l.PAD, l.TITLE_Y - 4, 40))
+    } else {
+      parts.push(T(l.PAD, l.TITLE_Y, l.TITLE_SIZE, plan.title, { fill: style.fg, weight: 700 }))
     }
   }
   if (style.footer) {
@@ -194,28 +197,30 @@ export function renderSlide(plan: PagePlan, style: SlideStyle, ctx: RenderCtx): 
 /* ---------- 封面 / 金句 / 结尾 ---------- */
 
 function renderCover(plan: PagePlan, style: SlideStyle, l: BentoLayout): string {
-  const titleSize = style.carded ? 56 : 76
+  const plain = style.plain === true
+  const carded = style.carded === true
+  const titleSize = plain ? 76 : 56
   const titleLines = wrapLines(plan.title, titleSize, l.W - l.PAD * 2 - 200, 2)
   const parts: string[] = []
   const kickerY = l.CONTENT_TOP + 30
-  parts.push(T(l.PAD, kickerY, style.carded ? 13 : 15, plan.kicker || 'SIMPLEPPT', { fill: style.accent, weight: 600, ls: style.carded ? 3 : 2 }))
-  if (style.carded) {
+  parts.push(T(l.PAD, kickerY, plain ? 15 : 13, plan.kicker || 'SIMPLEPPT', { fill: style.accent, weight: 600, ls: plain ? 2 : 3 }))
+  if (plain) {
+    parts.push(questionPerson(l.W - l.PAD, l.CONTENT_TOP + 60, 64))
+  } else if (carded) {
     parts.push(`<rect x="${l.PAD}" y="${kickerY + 26}" width="64" height="6" rx="3" fill="${style.accent}"/>`)
     const cx = l.W - 228
     parts.push(`<circle cx="${cx}" cy="212" r="128" fill="none" stroke="${style.accent}" stroke-width="1.5" opacity="0.35"/>`)
     parts.push(`<circle cx="${cx}" cy="212" r="86" fill="none" stroke="${style.accent}" stroke-width="1.5" opacity="0.22"/>`)
     parts.push(`<rect x="${cx - 66}" y="428" width="148" height="148" rx="18" fill="${style.accentA}" stroke="${style.accent}" stroke-width="1"/>`)
-  } else {
-    parts.push(questionPerson(l.W - l.PAD, l.CONTENT_TOP + 60, 64))
   }
   let ty = kickerY + 92
   for (let i = 0; i < titleLines.length; i++) {
-    if (style.carded) parts.push(T(l.PAD, ty, titleSize, titleLines[i], { fill: style.fg, weight: 700 }))
-    else parts.push(wordArt(l.PAD, ty, titleSize, titleLines[i], 90 + i))
+    if (plain) parts.push(wordArt(l.PAD, ty, titleSize, titleLines[i], 90 + i))
+    else parts.push(T(l.PAD, ty, titleSize, titleLines[i], { fill: style.fg, weight: 700 }))
     ty += titleSize * 1.18
   }
-  parts.push(T(l.PAD, ty + 18, style.carded ? 17 : 20, plan.message, { fill: style.muted }))
-  if (style.carded) {
+  parts.push(T(l.PAD, ty + 18, plain ? 20 : 17, plan.message, { fill: style.muted }))
+  if (carded) {
     parts.push(T(l.PAD, l.FOOTER_Y - 40, 13, plan.speakerNote || 'SimplePPT · 自动生成', { fill: style.muted }))
   }
   return parts.join('\n')
@@ -228,7 +233,7 @@ function renderQuote(plan: PagePlan, style: SlideStyle, l: BentoLayout, ctx: Ren
   const lines = wrapLines(plan.message, 26, l.W - l.PAD * 2 - 120, 2)
   let ty = Math.round(l.H * 0.45)
   for (const line of lines) {
-    if (!style.carded) {
+    if (style.plain) {
       const w = textWidth(line, 26)
       parts.push(`<rect x="${cx - w / 2 - 8}" y="${ty - 24}" width="${w + 16}" height="${26 * 1.25}" rx="3" fill="${style.highlight}" opacity="0.9"/>`)
     }
@@ -242,15 +247,17 @@ function renderQuote(plan: PagePlan, style: SlideStyle, l: BentoLayout, ctx: Ren
 function renderEnding(plan: PagePlan, style: SlideStyle, l: BentoLayout): string {
   const cx = l.W / 2
   const parts: string[] = []
-  if (style.carded) {
+  const plain = style.plain === true
+  const carded = style.carded === true
+  if (carded) {
     parts.push(`<rect x="${cx - 32}" y="${Math.round(l.H * 0.42)}" width="64" height="6" rx="3" fill="${style.accent}"/>`)
     parts.push(`<circle cx="${Math.round(l.W * 0.16)}" cy="${Math.round(l.H * 0.72)}" r="90" fill="none" stroke="${style.accent}" stroke-width="1.5" opacity="0.25"/>`)
     parts.push(`<rect x="${Math.round(l.W * 0.83)}" y="${Math.round(l.H * 0.25)}" width="120" height="120" rx="18" fill="${style.accentA}" stroke="${style.accent}" stroke-width="1"/>`)
   }
-  if (style.carded) {
-    parts.push(T(cx, Math.round(l.H * 0.52), 46, plan.message, { fill: style.fg, weight: 700, anchor: 'middle' }))
-  } else {
+  if (plain) {
     parts.push(wordArt(cx, Math.round(l.H * 0.52), 44, plan.message, 7, 'middle'))
+  } else {
+    parts.push(T(cx, Math.round(l.H * 0.52), 46, plan.message, { fill: style.fg, weight: 700, anchor: 'middle' }))
   }
   const sub = asArray(plan.cards[0]?.content).join(' · ') || plan.speakerNote || ''
   if (sub) parts.push(T(cx, Math.round(l.H * 0.52) + 48, 16, sub, { fill: style.muted, anchor: 'middle' }))
@@ -260,11 +267,12 @@ function renderEnding(plan: PagePlan, style: SlideStyle, l: BentoLayout): string
 /* ---------- 卡片 ---------- */
 
 function renderCard(r: { x: number; y: number; w: number; h: number } & Record<string, any>, style: SlideStyle, l: BentoLayout): string {
-  const p = style.carded ? 24 : 6
+  const plain = style.plain === true
+  const carded = style.carded === true
+  const p = plain ? 6 : carded ? 24 : 18
   const x = r.x + p
   const w = r.w - p * 2
   const parts: string[] = []
-  const plain = !style.carded
   const bodyFill = plain ? style.fg : style.muted
   const titleSize = plain ? 30 : 20
   let cy = r.y + (plain ? 24 : 42)
@@ -278,13 +286,16 @@ function renderCard(r: { x: number; y: number; w: number; h: number } & Record<s
     } else if (r.title) {
       parts.push(T(x, cy, jsize(titleSize, 4), r.title, { fill: style.fg, weight: 700 }))
     }
-  } else {
+  } else if (carded) {
     parts.push(
       `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="${style.radius}" fill="${r.accent ? style.accentA : style.card}" stroke="${
         r.accent ? style.accent : style.border
       }" stroke-width="${r.accent ? 1.2 : 1}"/>`,
     )
     if (r.title) parts.push(T(x, cy, 20, r.title, { fill: style.fg, weight: 600 }))
+  } else if (r.title) {
+    // Bento 卡片关闭：不画容器底，文字仍按网格位置正常排版（不带朴素干货效果）
+    parts.push(T(x, cy, 20, r.title, { fill: style.fg, weight: 600 }))
   }
 
   const bodyTop = r.title ? cy + (plain ? 40 : 32) : cy
