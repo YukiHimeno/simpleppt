@@ -8,7 +8,7 @@ import { SlideSvg } from './SlideStage'
 import { Logo } from './Logo'
 import { Badge, Button, Card, Textarea, useToast } from './ui'
 
-/** Windows 10 磁贴风格的方法卡片：同一功能在首页、顶栏、阶段页头共用同一图标。 */
+/** Windows-10-style method tiles: each feature reuses the same icon on Home, the top bar and the stage header. */
 const TILES: { icon: LucideIcon; title: string; desc: string; bg: string; fg: string }[] = [
   { icon: MessagesSquare, title: '先问后做', desc: '访谈受众、目的与场合，同步检索背景资料', bg: '#0078D7', fg: '#ffffff' },
   { icon: StickyNote, title: '便利贴大纲', desc: '金字塔原理：结论先行，逐页一张便利贴', bg: '#FFB900', fg: '#3b2e00' },
@@ -18,7 +18,7 @@ const TILES: { icon: LucideIcon; title: string; desc: string; bg: string; fg: st
   { icon: Presentation, title: '整页 SVG', desc: '直接画整页，浏览器即渲染器', bg: '#D24726', fg: '#ffffff' },
 ]
 
-const EXAMPLES = ['Q3 产品发布宣讲', '智能体落地路线汇报', '新人培训：代码规范', '行业研究：低空经济']
+const EXAMPLES = ['楼下面包店要不要上线外卖', '周末摆摊卖咖啡能赚回摊位费吗', '小区驿站加开社区团购点值不值', '把家里空房间改成自习室要花多少']
 
 export function Home() {
   const { project, patch, settings, setSettings, go, openSettings, openStyle } = useApp()
