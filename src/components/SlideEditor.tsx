@@ -1,8 +1,9 @@
-// 页面直接编辑器：在浏览器里修改 AI 生成的幻灯片。
-// 原理：幻灯片本体是纯 SVG（形状 + 文本），把 <text> 元素变成可选中、可拖动、
-// 可改字、可调字号/颜色/加粗、可加荧光笔、可删除的对象，保存后直接进入导出链路。
-// 说明：只读编辑的是 SVG 源（页面的唯一真源），这正是本项目"ONLYOFFICE+WASM
-// 深度编辑"路线的轻量替代——不需要 x2t 转换即可所见即所得地修改。
+// In-browser editor for AI-generated slides.
+// Slides are plain SVG (shapes + text): each <text> becomes selectable,
+// draggable, editable (text/size/color/bold/highlight/delete), then the
+// result feeds straight into the export pipeline on save.
+// The edited SVG source is the single source of truth, so no x2t round trip
+// is needed for WYSIWYG editing.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bold, Check, Highlighter, Minus, Plus, Redo2, Trash2, Undo2, X } from 'lucide-react'
 import { sanitizeSvg } from '../lib/exporter'
@@ -31,7 +32,23 @@ export function SlideEditor({ svg, style, ratio, onSave, onCancel }: Props) {
   const getSvgEl = (): SVGSVGElement | null => wrapRef.current?.querySelector('svg') ?? null
   const serialize = (): string => {
     const el = getSvgEl()
-    return el ? new XMLSerializer().serializeToString(el) : svg
+    if (!el) return svg
+    // The selection outline (stroke = accent) is ephemeral UI; it must never
+    // leak into history or the saved SVG. Strip it, serialize, then restore.
+    const saved: { el: SVGTextElement; stroke: string | null; sw: string }[] = []
+    for (const [textEl, orig] of prevStroke.current) {
+      saved.push({ el: textEl, stroke: textEl.getAttribute('stroke'), sw: textEl.style.strokeWidth })
+      if (orig) textEl.setAttribute('stroke', orig)
+      else textEl.removeAttribute('stroke')
+      textEl.style.strokeWidth = ''
+    }
+    const out = new XMLSerializer().serializeToString(el)
+    for (const { el: textEl, stroke, sw } of saved) {
+      if (stroke) textEl.setAttribute('stroke', stroke)
+      else textEl.removeAttribute('stroke')
+      textEl.style.strokeWidth = sw
+    }
+    return out
   }
   const pushHistory = useCallback(() => {
     historyRef.current.push(serialize())
@@ -43,7 +60,7 @@ export function SlideEditor({ svg, style, ratio, onSave, onCancel }: Props) {
     if (el) el.outerHTML = s
   }
 
-  // 挂载 svg（不经过 React 重渲染，避免状态更新时重置 DOM 编辑结果）
+  // Mount the SVG outside React rendering so state updates never reset edits.
   useEffect(() => {
     if (!wrapRef.current) return
     wrapRef.current.innerHTML = sanitizeSvg(svg)
@@ -78,7 +95,7 @@ export function SlideEditor({ svg, style, ratio, onSave, onCancel }: Props) {
     [deselect, style.accent],
   )
 
-  // 事件委托：点选 / 双击编辑 / 拖动
+  // Event delegation: click-select, double-click to edit, drag to move.
   useEffect(() => {
     const wrap = wrapRef.current
     if (!wrap) return
@@ -122,7 +139,7 @@ export function SlideEditor({ svg, style, ratio, onSave, onCancel }: Props) {
       const dy = (e.clientY - d.startY) * f
       d.el.setAttribute('x', String(Math.round(d.origX + dx)))
       d.el.setAttribute('y', String(Math.round(d.origY + dy)))
-      // AI 常把 x 写在 tspan 上，一起平移
+      // AI output often puts x on tspan elements, so move those together.
       d.el.querySelectorAll('tspan').forEach((ts) => {
         if (ts.getAttribute('x')) ts.setAttribute('x', String(Number(ts.getAttribute('x')) + Math.round(dx)))
       })
@@ -250,7 +267,7 @@ export function SlideEditor({ svg, style, ratio, onSave, onCancel }: Props) {
 
   return (
     <div className="space-y-3" data-tick={tick}>
-      {/* 工具栏 */}
+      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1.5 border border-border bg-card p-2">
         <Button variant="ghost" size="sm" onClick={undo} disabled={historyRef.current.length <= 1} title="撤销">
           <Undo2 className="h-3.5 w-3.5" />
@@ -310,7 +327,7 @@ export function SlideEditor({ svg, style, ratio, onSave, onCancel }: Props) {
         </span>
       </div>
 
-      {/* 画布 */}
+      {/* Canvas */}
       <div
         ref={wrapRef}
         className={cn(
