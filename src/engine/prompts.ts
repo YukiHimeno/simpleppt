@@ -7,8 +7,9 @@
 //  5) Draw with the Bento grid layout (or the plain/dry handout style)
 //  6) Render each page directly as SVG
 // Every output is prefixed with the no-AI-tone hard requirement (NO_AI_TONE).
-import { isPlainStyle, type InterviewQA, type InterviewSummary, type Background, type Fact, type PagePlan, type StickyPage, type SlideStyle, type ReferenceFile, type Quote } from 'shared/types'
+import { isPlainStyle, stylePreset, type InterviewQA, type InterviewSummary, type Background, type Fact, type PagePlan, type StickyPage, type SlideStyle, type ReferenceFile, type Quote } from 'shared/types'
 import { getLayout } from 'shared/bento'
+import { plainMixedPages } from 'shared/plain-mix'
 
 export interface StageRequest {
   instructions: string
@@ -383,6 +384,15 @@ export function slideStage(input: {
 }): StageRequest {
   const { topic, index, total, coreMessage, prevTitle, nextTitle, plan, style, facts, quote, advice } = input
   const l = getLayout(style.ratio)
+  // In a plain/dry deck a few pages are "pasted from another PPT": they are
+  // generated with a different foreign style preset, keeping the deck's ratio.
+  const deckStyle = style
+  let eff = deckStyle
+  if (isPlainStyle(deckStyle)) {
+    const mix = plainMixedPages(`${topic}|${total}`, total)
+    const hit = mix.find((m) => m.page === index)
+    if (hit) eff = { ...stylePreset(hit.styleId), ratio: deckStyle.ratio }
+  }
   const rects = (plan.rects ?? []).map((r, i) => ({
     i,
     kind: r.kind,
@@ -394,8 +404,8 @@ export function slideStage(input: {
   }))
   // carded only controls card containers; plain (the dry handout look) is a separate
   // flag, so disabling Bento cards does not enable the plain style.
-  const plain = isPlainStyle(style)
-  const carded = style.carded === true
+  const plain = isPlainStyle(eff)
+  const carded = eff.carded === true
   const titleSize = plain ? l.TITLE_SIZE + 8 : l.TITLE_SIZE
   const titleOverflowSize = Math.max(22, titleSize - 6)
   const factsText = facts.length
@@ -407,7 +417,7 @@ export function slideStage(input: {
   const styleRules = carded
     ? `## Bento 卡片画法
 下方给出每张卡片的精确矩形 {x,y,w,h} 与内容。每张卡片：
-1. 容器：<rect x y width height rx="${style.radius}" fill="card" stroke="border" stroke-width="1"/>；accent 焦点卡片改为 fill="accentA" stroke="accent" stroke-width="1.2"
+1. 容器：<rect x y width height rx="${eff.radius}" fill="card" stroke="border" stroke-width="1"/>；accent 焦点卡片改为 fill="accentA" stroke="accent" stroke-width="1.2"
 2. 内边距 24px；卡片标题字号 20 字重 600 填 fg；正文 15 填 muted（关键词句可用 fg）
 3. kind 画法：
    - stat：数字字号 54 字重 700 填 accent（或 fg），下方 12px muted 标签
@@ -470,16 +480,16 @@ export function slideStage(input: {
    LaTeX 源码里不要出现双引号，避免使用 & 对齐（矩阵改用 \\begin{gathered}）；XML 转义规则同样适用。
 
 ## 画布结构与配色（严格使用这些色值）
-画布 ${l.W}×${l.H}。配色 tokens：${tokensBlock(style)}
+画布 ${l.W}×${l.H}。配色 tokens：${tokensBlock(eff)}
 - 全幅背景 rect：填 bg
-- 页眉：kicker 在 (${l.PAD}, ${l.KICKER_Y})，字号 12，字重 600，填 accent，letter-spacing 2；主标题基线 (${l.PAD}, ${l.TITLE_Y})，字号 ${titleSize}，最多 22 个字（超长就缩到 ${titleOverflowSize}px 或不要标题，直接正文）。${
+- 页眉：${plain ? '朴素干货不画页眉 kicker。' : `kicker 在 (${l.PAD}, ${l.KICKER_Y})，字号 12，字重 600，填 accent，letter-spacing 2；`}主标题基线 (${l.PAD}, ${l.TITLE_Y})，字号 ${titleSize}，最多 22 个字（超长就缩到 ${titleOverflowSize}px 或不要标题，直接正文）。${
       carded
         ? 'Bento 卡片版式：主标题 700 填 fg。'
         : plain
           ? '朴素干货：标题位置不固定，随机自选（左上角 / 无标题 / 顶部居中 / 左侧竖排 / 居中大字）；若选默认左上角，基线参考 y=' + l.TITLE_Y + '。主标题用 Office 默认艺术字样式（font-weight=800 加粗，配色随机：纯色蓝 #4472C4/橙 #ED7D31/金 #FFC000/浅蓝 #5B9BD5/绿 #70AD47、黄底橙描边 #FFFF00+#FFC000、白字粗描边加投影、镂空字、白字加荧光边等），可加 1-2° 旋转，不画强调色短横线。'
           : '无卡片版式：主标题 700 填 fg（沿用当前风格字体与配色，不加艺术字）。'
     }
-${style.footer ? `- 页脚：基线 (${l.PAD}, ${l.FOOTER_Y}) 左侧 10px 填 muted 写「${topic} · SimplePPT」；右侧 (${l.W - l.PAD}, ${l.FOOTER_Y}) text-anchor="end" 写页码「${String(index).padStart(2, '0')} / ${String(total).padStart(2, '0')}」` : '- 页脚：无'}
+${eff.footer ? `- 页脚：基线 (${l.PAD}, ${l.FOOTER_Y}) 左侧 10px 填 muted 写「${topic} · SimplePPT」；右侧 (${l.W - l.PAD}, ${l.FOOTER_Y}) text-anchor="end" 写页码「${String(index).padStart(2, '0')} / ${String(total).padStart(2, '0')}」` : '- 页脚：无'}
 
 ${ratioNote}
 
@@ -490,7 +500,7 @@ ${styleRules}
       carded
         ? `accent 短横线 rect(x=${l.PAD},y=252,w=64,h=6,rx=3)；kicker 13px accent letter-spacing 3 在 (${l.PAD}, 226)；主标题 56px 字重 700 fg，基线 (${l.PAD}, 330)（超过 14 字拆两行，第二行基线 +72）；副标题 17px muted 一行，基线 (${l.PAD}, 386)；底部 meta (${l.PAD}, 640) 13px muted。右上象限一组克制的几何装饰：2 个同心圆环 stroke="accent" opacity 0.25-0.4 + 1 个小实心方块，不与文字重叠。`
         : plain
-          ? `kicker 15px accent letter-spacing 2 在 (${l.PAD}, ${l.CONTENT_TOP + 24})；主标题用 Office 艺术字样式（font-weight=800、fill="rgba(255,255,0,0.42)"、stroke="#FFC000" stroke-width=2 paint-order="stroke"）78px，基线 (${l.PAD}, ${l.CONTENT_TOP + 110})（超 12 字拆两行）；**不画任何强调色短横线**；副标题 20px muted 一行，基线 +72；**不要页脚 meta 行**；右下角放一个"问号小人"占位：<g data-question-person="1" x="1024" y="150" size="64"/>（不要画矢量轮廓）。重点词可用荧光笔。`
+          ? `朴素干货封面不画 kicker。主标题用 Office 艺术字样式（font-weight=800、fill="rgba(255,255,0,0.42)"、stroke="#FFC000" stroke-width=2 paint-order="stroke"）78px，基线 (${l.PAD}, ${l.CONTENT_TOP + 70})（超 12 字拆两行）；**不画任何强调色短横线**；副标题 20px muted 一行，基线 +72；**不要页脚 meta 行**；右下角放一个"问号小人"占位：<g data-question-person="1" x="1024" y="150" size="64"/>（不要画矢量轮廓）。重点词可用荧光笔。`
           : `kicker 13px accent letter-spacing 3 在 (${l.PAD}, ${l.CONTENT_TOP + 24})；主标题 56px 字重 700 fg，基线 (${l.PAD}, ${l.CONTENT_TOP + 110})（超过 14 字拆两行，第二行基线 +72）；副标题 17px muted 一行（基线 +60）；不加几何装饰、不加页脚 meta 行。`
     }
 - ending：居中构图。${

@@ -172,7 +172,7 @@ export function renderSlide(plan: PagePlan, style: SlideStyle, ctx: RenderCtx): 
   const parts: string[] = [`<rect width="${l.W}" height="${l.H}" fill="${style.bg}"/>`]
 
   const isChrome = plan.pageType !== 'cover' && plan.pageType !== 'quote' && plan.pageType !== 'ending'
-  if (isChrome && plan.kicker) parts.push(T(l.PAD, l.KICKER_Y, 12, plan.kicker, { fill: style.accent, weight: 600, ls: 2 }))
+  if (isChrome && plan.kicker && !plain) parts.push(T(l.PAD, l.KICKER_Y, 12, plan.kicker, { fill: style.accent, weight: 600, ls: 2 }))
   if (isChrome) {
     if (plain) {
       parts.push(wordArt(l.PAD, l.TITLE_Y, l.TITLE_SIZE, plan.title, 5))
@@ -203,7 +203,7 @@ function renderCover(plan: PagePlan, style: SlideStyle, l: BentoLayout): string 
   const titleLines = wrapLines(plan.title, titleSize, l.W - l.PAD * 2 - 200, 2)
   const parts: string[] = []
   const kickerY = l.CONTENT_TOP + 30
-  parts.push(T(l.PAD, kickerY, plain ? 15 : 13, plan.kicker || 'SIMPLEPPT', { fill: style.accent, weight: 600, ls: plain ? 2 : 3 }))
+  if (!plain) parts.push(T(l.PAD, kickerY, plain ? 15 : 13, plan.kicker || 'SIMPLEPPT', { fill: style.accent, weight: 600, ls: plain ? 2 : 3 }))
   if (plain) {
     parts.push(questionPerson(l.W - l.PAD, l.CONTENT_TOP + 60, 64))
   } else if (carded) {
