@@ -5,7 +5,8 @@
 // concrete numbers, small everyday topic, no filler or grand claims.
 import type { InterviewQA, InterviewSummary, Outline, PagePlan, PageResearch, StickyPage } from 'shared/types'
 import { enrichPlan } from 'shared/bento'
-import type { SlideStyle } from 'shared/types'
+import { isPlainStyle, stylePreset, type SlideStyle } from 'shared/types'
+import { plainMixedPages } from 'shared/plain-mix'
 import { renderSlide } from './slide-renderer'
 
 export const MOCK_TOPIC = '楼下面包店要不要上线外卖'
@@ -172,7 +173,16 @@ export function mockPlans(): PagePlan[] {
 }
 
 export function renderMockSlide(plan: PagePlan, style: SlideStyle, quoteAuthor?: string): string {
-  return renderSlide(plan, style, { index: plan.index, total: 8, topic: MOCK_TOPIC, quoteAuthor })
+  const total = 8
+  // In a plain/dry demo deck, a couple of pages look like they were copied
+  // from another PPT, so draw them with a foreign style preset.
+  let eff = style
+  if (isPlainStyle(style)) {
+    const mix = plainMixedPages(`${MOCK_TOPIC}|demo`, total)
+    const hit = mix.find((m) => m.page === plan.index)
+    if (hit) eff = { ...stylePreset(hit.styleId), ratio: style.ratio }
+  }
+  return renderSlide(plan, eff, { index: plan.index, total, topic: MOCK_TOPIC, quoteAuthor })
 }
 
 // Demo outline regeneration: append the feedback to the core message so the
