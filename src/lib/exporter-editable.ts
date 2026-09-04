@@ -12,7 +12,7 @@
 // 颜色/透明度按 SVG 原样还原：rgba 的 alpha 与 opacity 属性会映射为 PPT 的
 // transparency，避免把半透明色硬写成实心色。
 import PptxGenJS from 'pptxgenjs'
-import type { CanvasRatio, SlideStyle } from 'shared/types'
+import { isPlainStyle, type CanvasRatio, type SlideStyle } from 'shared/types'
 import { RATIO_SIZE } from './exporter'
 
 /** SVG 字号(px) → pptx 字号(pt)：1px = 0.75pt */
@@ -595,7 +595,7 @@ function clusterTextLines(texts: TextLine[]): TextLine[][] {
 
 /** 朴素干货风格使用等线，其他风格使用 PingFang SC */
 function fontFamily(style: SlideStyle): string {
-  return style.plain ? '等线' : 'PingFang SC'
+  return isPlainStyle(style) ? '等线' : 'PingFang SC'
 }
 
 /** 把 NativeShape 的填充转成 pptxgenjs fill（含透明度；无填充时显式 noFill 风格对象） */

@@ -7,7 +7,7 @@
 //  5) Bento Grid 便当网格版式（或朴素干货版式）
 //  6) 直接生成整页 SVG
 // 所有输出统一注入「去 AI 味」硬性要求（NO_AI_TONE）。
-import type { InterviewQA, InterviewSummary, Background, Fact, PagePlan, StickyPage, SlideStyle, ReferenceFile, Quote } from 'shared/types'
+import { isPlainStyle, type InterviewQA, type InterviewSummary, type Background, type Fact, type PagePlan, type StickyPage, type SlideStyle, type ReferenceFile, type Quote } from 'shared/types'
 import { getLayout } from 'shared/bento'
 
 export interface StageRequest {
@@ -383,7 +383,7 @@ export function slideStage(input: {
     rect: { x: r.x, y: r.y, w: r.w, h: r.h },
   }))
   // carded 只控制是否画卡片容器；朴素干货由 plain 单独标记，两者不再互相绑定
-  const plain = style.plain === true
+  const plain = isPlainStyle(style)
   const carded = style.carded === true
   const titleSize = plain ? l.TITLE_SIZE + 8 : l.TITLE_SIZE
   const titleOverflowSize = Math.max(22, titleSize - 6)

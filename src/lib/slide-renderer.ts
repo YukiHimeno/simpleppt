@@ -2,7 +2,7 @@
 // 用途：风格工坊的实时预览、演示模式（Mock）的幻灯片生成。
 // 真实生成走 AI（服务端 prompts.ts），这里只覆盖演示与预览所需的页型与卡片类型。
 import { getLayout, gridRect, type BentoLayout } from 'shared/bento'
-import type { PagePlan, SlideStyle } from 'shared/types'
+import { isPlainStyle, type PagePlan, type SlideStyle } from 'shared/types'
 import { QUESTION_PERSON_DATA_URL } from './question-image'
 
 const FONT = "system-ui,'PingFang SC','Noto Sans CJK SC','Microsoft YaHei',sans-serif"
@@ -155,7 +155,7 @@ export function renderSlide(plan: PagePlan, style: SlideStyle, ctx: RenderCtx): 
   const base = getLayout(style.ratio)
   // carded 只决定是否画卡片底；朴素干货的手写讲义气质由 plain 单独控制，
   // 关掉 Bento 卡片不会误触发朴素干货版式。
-  const plain = style.plain === true
+  const plain = isPlainStyle(style)
   const l = plain ? tightenLayout(base) : base
   const rects = plan.cards.map((c) => {
     const r = { ...c, ...gridRect(l, c.col, c.colSpan, c.row, c.rowSpan) }
@@ -197,7 +197,7 @@ export function renderSlide(plan: PagePlan, style: SlideStyle, ctx: RenderCtx): 
 /* ---------- 封面 / 金句 / 结尾 ---------- */
 
 function renderCover(plan: PagePlan, style: SlideStyle, l: BentoLayout): string {
-  const plain = style.plain === true
+  const plain = isPlainStyle(style)
   const carded = style.carded === true
   const titleSize = plain ? 76 : 56
   const titleLines = wrapLines(plan.title, titleSize, l.W - l.PAD * 2 - 200, 2)
@@ -233,7 +233,7 @@ function renderQuote(plan: PagePlan, style: SlideStyle, l: BentoLayout, ctx: Ren
   const lines = wrapLines(plan.message, 26, l.W - l.PAD * 2 - 120, 2)
   let ty = Math.round(l.H * 0.45)
   for (const line of lines) {
-    if (style.plain) {
+    if (isPlainStyle(style)) {
       const w = textWidth(line, 26)
       parts.push(`<rect x="${cx - w / 2 - 8}" y="${ty - 24}" width="${w + 16}" height="${26 * 1.25}" rx="3" fill="${style.highlight}" opacity="0.9"/>`)
     }
@@ -247,7 +247,7 @@ function renderQuote(plan: PagePlan, style: SlideStyle, l: BentoLayout, ctx: Ren
 function renderEnding(plan: PagePlan, style: SlideStyle, l: BentoLayout): string {
   const cx = l.W / 2
   const parts: string[] = []
-  const plain = style.plain === true
+  const plain = isPlainStyle(style)
   const carded = style.carded === true
   if (carded) {
     parts.push(`<rect x="${cx - 32}" y="${Math.round(l.H * 0.42)}" width="64" height="6" rx="3" fill="${style.accent}"/>`)
@@ -267,7 +267,7 @@ function renderEnding(plan: PagePlan, style: SlideStyle, l: BentoLayout): string
 /* ---------- 卡片 ---------- */
 
 function renderCard(r: { x: number; y: number; w: number; h: number } & Record<string, any>, style: SlideStyle, l: BentoLayout): string {
-  const plain = style.plain === true
+  const plain = isPlainStyle(style)
   const carded = style.carded === true
   const p = plain ? 6 : carded ? 24 : 18
   const x = r.x + p
