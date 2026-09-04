@@ -601,7 +601,8 @@ function clusterTextLines(texts: TextLine[]): TextLine[][] {
  * glyphs; exporting it as a shape would put a separate box under the text, so
  * we turn it into real PowerPoint highlighting and drop the rect shape.
  */
-function markTextHighlights(texts: TextLine[], shapes: NativeShape[]): NativeShape[] {
+function markTextHighlights(texts: TextLine[], shapes: NativeShape[], style: SlideStyle): NativeShape[] {
+  const highlightHex = hexOf(style.highlight).toUpperCase()
   const backingRects = shapes.filter((s) => (s.kind === 'rect' || s.kind === 'roundRect') && !!s.fill)
   const used = new Set<NativeShape>()
   for (const t of texts) {
@@ -614,21 +615,20 @@ function markTextHighlights(texts: TextLine[], shapes: NativeShape[]): NativeSha
     let best: NativeShape | null = null
     let bestArea = 0
     for (const r of backingRects) {
-      if (!r.fill || used.has(r)) continue
-      // Highlight backing rects are translucent and roughly one line tall.
-      if (!r.fillTransparency) continue
-      if (r.h < t.size * 0.7 || r.h > t.size * 2.1) continue
+      if (!r.fill || r.fill.toUpperCase() !== highlightHex) continue
+      // A highlight backing rect may span one line or a whole paragraph.
+      if (r.w < 4 || r.h < t.size * 0.5 || r.h > t.size * 9) continue
       const x1 = Math.max(left, r.x)
       const x2 = Math.min(right, r.x + r.w)
       const y1 = Math.max(top, r.y)
       const y2 = Math.min(bottom, r.y + r.h)
       const area = Math.max(0, x2 - x1) * Math.max(0, y2 - y1)
-      if (area > bestArea) {
+      if (area > t.size * t.size * 0.15 && area > bestArea) {
         bestArea = area
         best = r
       }
     }
-    if (best && bestArea > t.size * t.size * 0.2) {
+    if (best) {
       t.highlight = best.fill
       used.add(best)
     }
@@ -690,7 +690,7 @@ export async function exportNativePptx(
     const { texts, shapes, images } = parseSvg(svg)
     // Turn per-line translucent backing rects into text-run highlights and
     // remove the rects from the native-shape layer.
-    const shapesForExport = markTextHighlights(texts, shapes)
+    const shapesForExport = markTextHighlights(texts, shapes, style)
 
     // 基础形状（先画，文本叠在上层）
     for (const sh of shapesForExport) {
@@ -758,9 +758,10 @@ export async function exportNativePptx(
     for (const block of clusterTextLines(texts)) {
       const t = block[0]
       const multi = block.length > 1
-      // Apply the real text highlight only when the whole block is backed by
-      // the same translucent rect; otherwise keep the shape fallback.
-      const hl = block.length > 0 && block.every((ln) => ln.highlight === block[0].highlight) && !!block[0].highlight ? block[0].highlight : undefined
+      // Apply the real text highlight when the block contains a highlighted
+      // line; a single backing rect often covers an entire paragraph.
+      const hlColors = block.map((ln) => ln.highlight).filter((c): c is string => !!c)
+      const hl = hlColors.length > 0 && hlColors.every((c) => c === hlColors[0]) ? hlColors[0] : undefined
       // fill="none" 是艺术字镂空层：PPT 文本框没有“无填充文字”，
       // 用幻灯片背景色当文字色 + 描边，才能得到“镂空字”效果，而不是默认的黑字。
       const isHollow = t.fill.trim() === 'none'
