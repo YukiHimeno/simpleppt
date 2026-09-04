@@ -63,7 +63,7 @@ export default function App() {
     document.documentElement.classList.toggle('dark', resolved)
   }, [theme, systemDark])
 
-  // 自动主题：跟随系统深浅色变化
+  // Auto theme: follow the OS light/dark preference.
   useEffect(() => {
     if (theme !== 'auto') return
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -78,7 +78,7 @@ export default function App() {
     return () => clearTimeout(t)
   }, [project])
 
-  // 点击底栏菜单外部时收起
+  // Close the bottom-bar menu when clicking outside it.
   useEffect(() => {
     if (!menuOpen) return
     const h = (e: MouseEvent) => {
@@ -125,14 +125,14 @@ export default function App() {
           )}
         </div>
 
-        {/* 移动端：右缘浮动的圆点刻度（完整面板在 lg+ 时随内容栏显示） */}
+        {/* Mobile: floating stage dots on the right edge (full panel shows with the content column at lg+). */}
         {project.stage !== 'home' && (
           <div className="fixed right-1.5 top-1/2 z-30 -translate-y-1/2 lg:hidden">
             <StageRail />
           </div>
         )}
 
-        {/* 底栏 */}
+        {/* Bottom bar */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/90 backdrop-blur">
           <div className="relative mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
             <button className="flex min-w-0 items-center gap-2" onClick={() => go('home')}>
@@ -140,7 +140,7 @@ export default function App() {
               <span className="hidden text-sm font-bold tracking-tight min-[420px]:inline">SimplePPT</span>
             </button>
             <Badge tone="outline" className="hidden xl:inline-flex">
-              v0.1
+              v0.2.0
             </Badge>
             {settings.mock && (
               <Badge tone="warn" className="hidden sm:inline-flex">
@@ -148,7 +148,7 @@ export default function App() {
               </Badge>
             )}
 
-            {/* 底栏中间：只放幽灵 AI 思维链（大屏文字流光，小屏三个闪烁点） */}
+            {/* Bottom bar center: ghost thinking chain only (glow text on wide screens, three blinking dots on small ones). */}
             <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center px-14 sm:px-24">
               <ThinkingChain />
             </div>

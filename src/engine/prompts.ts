@@ -1,12 +1,12 @@
-// SimplePPT 六阶段流水线的全部提示词。
-// 生成思路严格遵循：
-//  1) 先提问再生成（需求访谈 + 背景调研）
-//  2) 便利贴法规划结构（金字塔原理）
-//  3) 每页主题交给搜索型模型/搜索引擎补充真实资料
-//  4) 策划稿中间层（内容与版式先于视觉）
-//  5) Bento Grid 便当网格版式（或朴素干货版式）
-//  6) 直接生成整页 SVG
-// 所有输出统一注入「去 AI 味」硬性要求（NO_AI_TONE）。
+// All prompts for the six-stage SimplePPT pipeline.
+// Generation follows this order:
+//  1) Ask before generating (needs interview + background research)
+//  2) Plan the structure with sticky notes (pyramid principle)
+//  3) Feed each page topic to the search-backed model / search engine for real material
+//  4) Produce a page plan layer (content and layout before visuals)
+//  5) Draw with the Bento grid layout (or the plain/dry handout style)
+//  6) Render each page directly as SVG
+// Every output is prefixed with the no-AI-tone hard requirement (NO_AI_TONE).
 import { isPlainStyle, type InterviewQA, type InterviewSummary, type Background, type Fact, type PagePlan, type StickyPage, type SlideStyle, type ReferenceFile, type Quote } from 'shared/types'
 import { getLayout } from 'shared/bento'
 
@@ -20,9 +20,18 @@ export interface StageRequest {
 
 const json = (v: unknown) => JSON.stringify(v, null, 1)
 
-const H = (instructions: string) => `${instructions}\n\n${NO_AI_TONE}`
+/** Current local time, formatted for the user building this deck. */
+function nowLabel(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  const quarter = Math.floor(d.getMonth() / 3) + 1
+  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日 ${p(d.getHours())}:${p(d.getMinutes())}（第 ${quarter} 季度）`
+}
 
-/** 去除 AI 味硬性要求（反面教材提炼自 lieflat-less-ai-tone skill 的改写规则，重复项已合并） */
+const H = (instructions: string) =>
+  `${instructions}\n\n当前时间：${nowLabel()}。用户正在此刻制作这份 PPT，内容里出现的年份、季度、季节和“最近/今年/明年”都按这个时间推算，不要写死成你训练数据里的时间。\n\n${NO_AI_TONE}`
+
+/** Hard requirement to strip AI tone (bad examples distilled from the lieflat-less-ai-tone skill; duplicates merged). */
 const NO_AI_TONE = `## 硬性要求：去 AI 味（只影响文案措辞，不影响版式、结构与配色规则）
 
 当前环节输出的所有中文文案（标题、要点、正文、摘要、讲稿等）都要像人写的。这一节是强制要求，不是参考意见：输出前把整段逐条过一遍，命中就当场重写，不许留下明知违规的句子。宁可直白、像人随手写的，也不要通顺圆滑的 AI 腔。改写只动措辞，不得改动事实、数字、来源与内容结构，也不许自己编数据、案例、出处来"补具体"。每条都有明确的触发词，只在命中时改；对某处没把握就保持原样。不要为了"显得像人"硬加口语或补"就/很/了"等虚词，也不要删正常的问句、比喻和正文里的"首先……其次"。若本节与其它"写得漂亮"的要求冲突，以本节为准。
@@ -72,7 +81,7 @@ export function tokensBlock(style: SlideStyle): string {
   })
 }
 
-/* ---------- 阶段 1a：需求访谈 · 澄清问题 ---------- */
+/* ---------- Stage 1a: needs interview / clarifying questions ---------- */
 
 export function interviewQuestions(topic: string): StageRequest {
   return {
@@ -92,7 +101,7 @@ suggestions 给 2-3 个该问题最常见的答案，方便用户一键填入。
   }
 }
 
-/* ---------- 阶段 1b：背景资料调研（与提问同时进行） ---------- */
+/* ---------- Stage 1b: background research (runs alongside the interview) ---------- */
 
 export function backgroundResearch(topic: string, extra?: string): StageRequest {
   return {
@@ -110,7 +119,7 @@ export function backgroundResearch(topic: string, extra?: string): StageRequest 
   }
 }
 
-/* ---------- 阶段 1c：需求摘要（拿到回答后） ---------- */
+/* ---------- Stage 1c: needs summary (after answers) ---------- */
 
 export function interviewSummary(topic: string, qas: InterviewQA[], background: Background | null): StageRequest {
   const answered = qas
@@ -126,7 +135,7 @@ export function interviewSummary(topic: string, qas: InterviewQA[], background: 
   }
 }
 
-/* ---------- 搜索引擎：查询词生成 ---------- */
+/* ---------- Search engine: query generation ---------- */
 
 export function searchQueries(topic: string, subject: string, n = 3): StageRequest {
   return {
@@ -138,7 +147,7 @@ export function searchQueries(topic: string, subject: string, n = 3): StageReque
   }
 }
 
-/* ---------- 阶段 2：便利贴大纲（金字塔原理） ---------- */
+/* ---------- Stage 2: sticky-note outline (pyramid principle) ---------- */
 
 export function outlineStage(input: {
   topic: string
@@ -193,7 +202,7 @@ export function normalizeOutline(raw: any): { coreMessage: string; pages: Sticky
   return { coreMessage: String(raw?.core_message ?? raw?.coreMessage ?? ''), pages }
 }
 
-/* ---------- 阶段 2b：单页便利贴重写（按用户建议） ---------- */
+/* ---------- Stage 2b: single sticky rewrite (per user advice) ---------- */
 
 export function outlineRewrite(input: {
   page: StickyPage
@@ -221,7 +230,7 @@ ${json(page)}
   }
 }
 
-/* ---------- 阶段 3：逐页资料检索 ---------- */
+/* ---------- Stage 3: per-page material research ---------- */
 
 export function pageResearch(input: {
   page: StickyPage
@@ -267,7 +276,7 @@ export function normalizeResearch(raw: any, pageId: string) {
   return { pageId, summary: String(raw?.summary ?? ''), facts, quote } as const
 }
 
-/* ---------- 阶段 4：页面策划稿（Bento 网格规划） ---------- */
+/* ---------- Stage 4: page plan (Bento grid planning) ---------- */
 
 export function planStage(input: {
   page: StickyPage
@@ -356,7 +365,7 @@ export function normalizePlan(raw: any, pageId: string, index: number, fallbackT
   }
 }
 
-/* ---------- 阶段 5：整页 SVG 生成 ---------- */
+/* ---------- Stage 5: full-page SVG generation ---------- */
 
 export function slideStage(input: {
   topic: string
@@ -382,7 +391,8 @@ export function slideStage(input: {
     data: r.data ?? null,
     rect: { x: r.x, y: r.y, w: r.w, h: r.h },
   }))
-  // carded 只控制是否画卡片容器；朴素干货由 plain 单独标记，两者不再互相绑定
+  // carded only controls card containers; plain (the dry handout look) is a separate
+  // flag, so disabling Bento cards does not enable the plain style.
   const plain = isPlainStyle(style)
   const carded = style.carded === true
   const titleSize = plain ? l.TITLE_SIZE + 8 : l.TITLE_SIZE

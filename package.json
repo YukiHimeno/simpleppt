@@ -1,7 +1,7 @@
 {
   "name": "simpleppt",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "SimplePPT — 先问清楚再动手的 AI PPT 生成工具（OpenAI Responses API / Bento Grid / 整页 SVG）",
   "scripts": {
