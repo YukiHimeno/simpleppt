@@ -6,10 +6,9 @@
 //  4) 策划稿中间层（内容与版式先于视觉）
 //  5) Bento Grid 便当网格版式（或朴素干货版式）
 //  6) 直接生成整页 SVG
-// 所有输出注入 humanizer 去除 AI 文风。
+// 所有输出统一注入「去 AI 味」硬性要求（NO_AI_TONE）。
 import type { InterviewQA, InterviewSummary, Background, Fact, PagePlan, StickyPage, SlideStyle, ReferenceFile, Quote } from 'shared/types'
 import { getLayout } from 'shared/bento'
-import { HUMANIZER } from './humanizer'
 
 export interface StageRequest {
   instructions: string
@@ -21,12 +20,14 @@ export interface StageRequest {
 
 const json = (v: unknown) => JSON.stringify(v, null, 1)
 
-const H = (instructions: string) => `${instructions}\n\n${HUMANIZER}\n\n${NO_AI_TONE}`
+const H = (instructions: string) => `${instructions}\n\n${NO_AI_TONE}`
 
-/** 去除 AI 味反面教材（提炼自 lieflat-less-ai-tone skill 的改写规则） */
-const NO_AI_TONE = `## 文案要求：去除 AI 味（只影响措辞，不影响版式、结构与配色规则）
+/** 去除 AI 味硬性要求（反面教材提炼自 lieflat-less-ai-tone skill 的改写规则） */
+const NO_AI_TONE = `## 硬性要求：去 AI 味（只影响文案措辞，不影响版式、结构与配色规则）
 
-当前环节输出的所有中文文案（标题、要点、正文、摘要、讲者备注等）都要像人写的。对照以下反面教材逐项检查，命中就重写：
+当前环节输出的所有中文文案（标题、要点、正文、摘要、讲稿等）都要像人写的。这一节是强制要求，不是参考意见：输出前把整段逐条过一遍，命中任何一条就当场重写，不许留下明知违规的句子。宁可直白、像人随手写的，也不要通顺圆滑的 AI 腔。改写只动措辞，不得改动事实、数字、来源与内容结构。若本节与其它"写得漂亮"的要求冲突，以本节为准。
+
+对照以下反面教材逐项检查，命中就重写：
 
 - 翻案腔："真正的壁垒不是技术，而是认知"这类"不是……而是……""并非……而是……""不在于……而在于……"先立靶再推翻的句式，改成正面判断："真正的壁垒是认知"。
 - 顿号罗列过密：一个分句里不要用两个以上顿号串三项以上并列。能概括就概括，别写"覆盖销售、运营、客服、仓储四大部门"。
@@ -41,7 +42,9 @@ const NO_AI_TONE = `## 文案要求：去除 AI 味（只影响措辞，不影�
 - 名词化绕弯："实现了……的提升""完成了对……的优化"改回动词："把……提上去了""把……改顺了"。
 - 正文别用碎片短行：两个换行符之间的一段正文，字符数必须大于 30；不到 30 字就跟相邻句子合并成完整一段，不要一个短句单独占一行。
 - 标题里禁止用冒号（： :）和破折号（—— —）：页面标题、区块标题、卡片标题一律不用这两种标点。
-- 不喊口号：不用"赋能""抓手""生态""未来可期""让我们拭目以待"，结尾停在最后一个具体事实上。`
+- 不喊口号、不装门面：不用"赋能""抓手""生态""未来可期""让我们拭目以待""标志着""彰显了""迈上新台阶"，结尾停在最后一个具体事实上。
+- 不编造出处：资料里没有的"专家表示""业内人士认为""研究表明"不写；没有出处的事实就删掉或标注待核实。
+- 不加戏：不用 emoji、不堆感叹号；内容本来不是三个，就别硬凑"三大""三驾马车"式排比；要点就是要点，不要每条都套"**加粗小标题：**解释"的模板。`
 
 export function referencesBlock(files: ReferenceFile[] | undefined | null, cap = 24000): string {
   if (!files || files.length === 0) return ''
