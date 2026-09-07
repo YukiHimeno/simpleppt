@@ -16,6 +16,7 @@
   <a href="https://simpleppt.pages.dev" target="_blank" rel="noreferrer">
     <img alt="在线 Demo" src="https://img.shields.io/badge/在线%20Demo-simpleppt.pages.dev-FF6D00?style=flat-square" />
   </a>
+  <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" />
 </p>
 
 **先问清楚，再动手做 PPT** —— 一个可视化的 PPT 自动生成网页应用。
@@ -78,3 +79,11 @@ npm run preview    # 本地预览构建产物
 ![资料搜索](screenshot/3.png)
 ![页面策划](screenshot/4.png)
 ![生成幻灯片](screenshot/5.png)
+
+
+## License
+
+本项目采用 [MIT License](LICENSE)。
+
+注意：`src/assets/question-person.png`（问号小人图片）来自网络，版权归原作者所有，不包含在上述 MIT 许可范围内；如需使用或分发该图片，请自行确认其来源与授权。
+
